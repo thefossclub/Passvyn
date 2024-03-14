@@ -23,16 +23,13 @@ The Secured Password Manager requires the following dependencies:
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/your_username/secured-password-manager.git
-
-    bash
-   
+   git clone https://github.com/v8v88v8v88/secured-password-manager.git
+  
 Navigate to the project directory:
 
-    ```bash
+   ```bash
     cd secured-password-manager
-    bash
-    
+
 Install the required dependencies using pip:
 
 bash
