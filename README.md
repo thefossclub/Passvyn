@@ -31,8 +31,12 @@ The Secured Password Manager requires the following dependencies:
     cd secured-password-manager
 
 3. Install the required dependencies using pip:
-   ```bash
-   pip install -r requirements.txt
+    ```bash
+    pip install -r requirements.txt
+
+3. Install in linux using:
+    ````bash
+     sudo apt install python3-ttkthemes
 
 4. Run the application:
    ```bash
