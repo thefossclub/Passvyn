@@ -24,7 +24,7 @@ The Secured Password Manager requires the following dependencies:
 1. Clone the repository to your local machine:
 
    ```bash
-   git clone https://github.com/v8v88v8v88/secured-password-manager.git
+   git clone https://github.com/v8v88v8v88/Passvyn.git
 2. Navigate to the project directory:
 
    ```bash
