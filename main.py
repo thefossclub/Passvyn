@@ -6,33 +6,45 @@ import hashlib
 import ttkthemes
 from tkinter import ttk
 from ttkthemes.themed_tk import ThemedTk
+import random
+import string
+import pyperclip
 
 passwords = []
 
 def save_passwords(filename="passwords.bin"):
-    with open(filename, "wb") as file:
-        pickle.dump(passwords, file)
+    try:
+        with open(filename, "wb") as file:
+            pickle.dump(passwords, file)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save passwords: {e}")
 
 def load_passwords(filename="passwords.bin"):
     if os.path.exists(filename):
-        with open(filename, "rb") as file:
-            try:
+        try:
+            with open(filename, "rb") as file:
                 return pickle.load(file)
-            except (pickle.UnpicklingError, EOFError):
-                messagebox.showerror("Error", "Failed to load passwords. The file may be corrupted.")
+        except (pickle.UnpicklingError, EOFError):
+            messagebox.showerror("Error", "Failed to load passwords. The file may be corrupted.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
     return []
 
 def save_master_password_hash(master_password_hash):
-    with open("master_password.txt", "wb") as file:
-        file.write(master_password_hash)
+    try:
+        with open("master_password.txt", "wb") as file:
+            file.write(master_password_hash)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save master password: {e}")
 
 def load_master_password_hash():
     if os.path.exists("master_password.txt"):
-        with open("master_password.txt", "rb") as file:
-            master_password_hash = file.read()
-            return master_password_hash
-    else:
-        return None
+        try:
+            with open("master_password.txt", "rb") as file:
+                return file.read()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load master password: {e}")
+    return None
 
 def verify_master_password():
     master_password = simpledialog.askstring("Master Password", "Enter the master password:", show='*')
@@ -60,6 +72,8 @@ def add_password(website_entry, username_entry, password_entry, password_listbox
         password_entry.delete(0, tk.END)
         update_password_list(password_listbox, passwords)
         save_passwords()
+    else:
+        messagebox.showerror("Error", "All fields are required")
 
 def update_password_list(password_listbox, loaded_passwords):
     password_listbox.delete(0, tk.END)
@@ -90,6 +104,28 @@ def exit_app(root):
     if messagebox.askyesno("Exit", "Are you sure you want to exit?"):
         root.destroy()
 
+def generate_password():
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(random.choice(characters) for i in range(12))
+    return password
+
+def copy_to_clipboard(password):
+    pyperclip.copy(password)
+    messagebox.showinfo("Copied", "Password copied to clipboard!")
+
+def clear_fields(website_entry, username_entry, password_entry):
+    website_entry.delete(0, tk.END)
+    username_entry.delete(0, tk.END)
+    password_entry.delete(0, tk.END)
+
+def password_strength(password):
+    if len(password) < 6:
+        return "Weak"
+    elif len(password) < 10:
+        return "Medium"
+    else:
+        return "Strong"
+
 def create_password_manager(loaded_passwords):
     root = ThemedTk(theme="arc")
     root.title("Secured Password Manager")
@@ -112,8 +148,19 @@ def create_password_manager(loaded_passwords):
     password_entry = ttk.Entry(root, show='*')
     password_entry.grid(row=2, column=1, padx=5, pady=5)
 
+    password_strength_label = ttk.Label(root, text="")
+    password_strength_label.grid(row=2, column=2, padx=5, pady=5)
+
+    password_entry.bind("<KeyRelease>", lambda e: password_strength_label.config(text=password_strength(password_entry.get())))
+
+    generate_button = ttk.Button(root, text="Generate", command=lambda: password_entry.insert(0, generate_password()))
+    generate_button.grid(row=2, column=3, padx=5, pady=5)
+
     add_button = ttk.Button(root, text="Add", command=lambda: add_password(website_entry, username_entry, password_entry, password_listbox))
     add_button.grid(row=3, column=0, padx=5, pady=5)
+
+    clear_button = ttk.Button(root, text="Clear", command=lambda: clear_fields(website_entry, username_entry, password_entry))
+    clear_button.grid(row=3, column=1, padx=5, pady=5)
 
     password_listbox = tk.Listbox(root, width=40, selectmode=tk.SINGLE)
     password_listbox.grid(row=4, column=0, rowspan=4, columnspan=2, padx=5, pady=5)
@@ -121,15 +168,17 @@ def create_password_manager(loaded_passwords):
     view_button = ttk.Button(root, text="View", command=lambda: view_password(password_listbox, loaded_passwords))
     view_button.grid(row=4, column=2, padx=5, pady=5)
 
+    copy_button = ttk.Button(root, text="Copy", command=lambda: copy_to_clipboard(passwords[password_listbox.curselection()[0]][2]))
+    copy_button.grid(row=5, column=2, padx=5, pady=5)
+
     delete_button = ttk.Button(root, text="Delete", command=lambda: delete_password(password_listbox, loaded_passwords))
-    delete_button.grid(row=5, column=2, padx=5, pady=5)
+    delete_button.grid(row=6, column=2, padx=5, pady=5)
 
     exit_button = ttk.Button(root, text="Exit", command=lambda: exit_app(root))
-    exit_button.grid(row=6, column=2, padx=5, pady=5)
+    exit_button.grid(row=7, column=2, padx=5, pady=5)
 
     update_password_list(password_listbox, loaded_passwords)
 
     root.mainloop()
 
 verify_master_password()
-
