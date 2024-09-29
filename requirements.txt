@@ -1,2 +1,2 @@
-ttkthemes
-
+PyQt6
+cryptography

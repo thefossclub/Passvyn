@@ -1,135 +1,291 @@
-import tkinter as tk
-from tkinter import simpledialog, messagebox
+import sys
 import os
-import pickle
+import json
 import hashlib
-import ttkthemes
-from tkinter import ttk
-from ttkthemes.themed_tk import ThemedTk
+import secrets
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, 
+                             QHBoxLayout, QLabel, QLineEdit, QPushButton, QTreeWidget, 
+                             QTreeWidgetItem, QMessageBox, QInputDialog, QStyleFactory)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPalette, QColor
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+import base64
 
-passwords = []
+class ModernStyle:
+    @staticmethod
+    def set_style(app):
+        app.setStyle(QStyleFactory.create("Fusion"))
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+        palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+        app.setPalette(palette)
+        
+        app.setStyleSheet("""
+            QWidget {
+                border-radius: 5px;
+            }
+            QPushButton {
+                background-color: #2a82da;
+                color: white;
+                border: none;
+                padding: 5px 15px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3a92ea;
+            }
+            QLineEdit {
+                padding: 5px;
+                border: 1px solid #555;
+                border-radius: 5px;
+            }
+            QTabWidget::pane {
+                border: 1px solid #555;
+                border-radius: 5px;
+            }
+            QTabBar::tab {
+                background-color: #2a2a2a;
+                color: white;
+                padding: 8px 20px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+            }
+            QTabBar::tab:selected {
+                background-color: #3a3a3a;
+            }
+            QTreeWidget {
+                border: 1px solid #555;
+                border-radius: 5px;
+            }
+        """)
 
-def save_passwords(filename="passwords.bin"):
-    with open(filename, "wb") as file:
-        pickle.dump(passwords, file)
+class SecuredPasswordManager:
+    def __init__(self):
+        self.passwords = []
+        self.master_password_hash = None
+        self.encryption_key = None
+        self.salt = None
+        self.config_file = "config.json"
+        self.passwords_file = "passwords.enc"
 
-def load_passwords(filename="passwords.bin"):
-    if os.path.exists(filename):
-        with open(filename, "rb") as file:
-            try:
-                return pickle.load(file)
-            except (pickle.UnpicklingError, EOFError):
-                messagebox.showerror("Error", "Failed to load passwords. The file may be corrupted.")
-    return []
-
-def save_master_password_hash(master_password_hash):
-    with open("master_password.txt", "wb") as file:
-        file.write(master_password_hash)
-
-def load_master_password_hash():
-    if os.path.exists("master_password.txt"):
-        with open("master_password.txt", "rb") as file:
-            master_password_hash = file.read()
-            return master_password_hash
-    else:
-        return None
-
-def verify_master_password():
-    master_password = simpledialog.askstring("Master Password", "Enter the master password:", show='*')
-    if master_password:
-        saved_hash = load_master_password_hash()
-        if saved_hash:
-            if hashlib.sha256(master_password.encode()).digest() == saved_hash:
-                loaded_passwords = load_passwords()
-                create_password_manager(loaded_passwords)
-            else:
-                messagebox.showerror("Error", "Incorrect master password")
+    def load_config(self):
+        if os.path.exists(self.config_file):
+            with open(self.config_file, "r") as file:
+                config = json.load(file)
+                self.master_password_hash = config.get("master_password_hash")
+                self.salt = base64.b64decode(config.get("salt", ""))
         else:
-            save_master_password_hash(hashlib.sha256(master_password.encode()).digest())
-            create_password_manager([])
+            self.salt = os.urandom(16)
 
-def add_password(website_entry, username_entry, password_entry, password_listbox):
-    website = website_entry.get()
-    username = username_entry.get()
-    password = password_entry.get()
-    if website and username and password:
-        passwords.append((website, username, password))
-        messagebox.showinfo("Success", "Password added successfully!")
-        website_entry.delete(0, tk.END)
-        username_entry.delete(0, tk.END)
-        password_entry.delete(0, tk.END)
-        update_password_list(password_listbox, passwords)
-        save_passwords()
+    def save_config(self):
+        config = {
+            "master_password_hash": self.master_password_hash,
+            "salt": base64.b64encode(self.salt).decode()
+        }
+        with open(self.config_file, "w") as file:
+            json.dump(config, file)
 
-def update_password_list(password_listbox, loaded_passwords):
-    password_listbox.delete(0, tk.END)
-    for website, username, _ in loaded_passwords:
-        password_listbox.insert(tk.END, f"{website} ({username})")
+    def derive_key(self, master_password):
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=self.salt,
+            iterations=100000,
+            backend=default_backend()
+        )
+        return base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
 
-def view_password(password_listbox, loaded_passwords):
-    selected_index = password_listbox.curselection()
-    if selected_index:
-        index = selected_index[0]
-        website, username, password = loaded_passwords[index]
-        messagebox.showinfo("Password", f"Website: {website}\nUsername: {username}\nPassword: {password}")
-    else:
-        messagebox.showerror("Error", "Please select a password entry from the list.")
+    def encrypt_passwords(self):
+        f = Fernet(self.encryption_key)
+        encrypted_data = f.encrypt(json.dumps(self.passwords).encode())
+        with open(self.passwords_file, "wb") as file:
+            file.write(encrypted_data)
 
-def delete_password(password_listbox, loaded_passwords):
-    selected_index = password_listbox.curselection()
-    if selected_index:
-        index = selected_index[0]
-        del loaded_passwords[index]
-        update_password_list(password_listbox, loaded_passwords)
-        save_passwords()
-        messagebox.showinfo("Success", "Password deleted successfully!")
-    else:
-        messagebox.showerror("Error", "Please select a password entry from the list.")
+    def decrypt_passwords(self):
+        if not os.path.exists(self.passwords_file):
+            return
+        with open(self.passwords_file, "rb") as file:
+            encrypted_data = file.read()
+        f = Fernet(self.encryption_key)
+        decrypted_data = f.decrypt(encrypted_data)
+        self.passwords = json.loads(decrypted_data.decode())
 
-def exit_app(root):
-    if messagebox.askyesno("Exit", "Are you sure you want to exit?"):
-        root.destroy()
+    def verify_master_password(self, master_password):
+        if not self.master_password_hash:
+            self.master_password_hash = hashlib.sha256(master_password.encode()).hexdigest()
+            self.encryption_key = self.derive_key(master_password)
+            self.save_config()
+            return True
+        else:
+            input_hash = hashlib.sha256(master_password.encode()).hexdigest()
+            if input_hash == self.master_password_hash:
+                self.encryption_key = self.derive_key(master_password)
+                return True
+        return False
 
-def create_password_manager(loaded_passwords):
-    root = ThemedTk(theme="arc")
-    root.title("Secured Password Manager")
+    def add_password(self, website, username, password):
+        self.passwords.append({"website": website, "username": username, "password": password})
+        self.encrypt_passwords()
 
-    website_label = ttk.Label(root, text="Website:")
-    website_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+    def get_password(self, index):
+        return self.passwords[index]
 
-    website_entry = ttk.Entry(root)
-    website_entry.grid(row=0, column=1, padx=5, pady=5)
+    def delete_password(self, index):
+        del self.passwords[index]
+        self.encrypt_passwords()
 
-    username_label = ttk.Label(root, text="Username:")
-    username_label.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+    def get_all_passwords(self):
+        return self.passwords
 
-    username_entry = ttk.Entry(root)
-    username_entry.grid(row=1, column=1, padx=5, pady=5)
+class PasswordManagerGUI(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.password_manager = SecuredPasswordManager()
+        self.password_manager.load_config()
+        self.init_ui()
 
-    password_label = ttk.Label(root, text="Password:")
-    password_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+    def init_ui(self):
+        self.setWindowTitle("Secured Password Manager")
+        self.setGeometry(100, 100, 600, 400)
 
-    password_entry = ttk.Entry(root, show='*')
-    password_entry.grid(row=2, column=1, padx=5, pady=5)
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        main_layout = QVBoxLayout()
+        main_widget.setLayout(main_layout)
 
-    add_button = ttk.Button(root, text="Add", command=lambda: add_password(website_entry, username_entry, password_entry, password_listbox))
-    add_button.grid(row=3, column=0, padx=5, pady=5)
+        tabs = QTabWidget()
+        main_layout.addWidget(tabs)
 
-    password_listbox = tk.Listbox(root, width=40, selectmode=tk.SINGLE)
-    password_listbox.grid(row=4, column=0, rowspan=4, columnspan=2, padx=5, pady=5)
+        add_tab = QWidget()
+        add_layout = QVBoxLayout()
+        add_tab.setLayout(add_layout)
 
-    view_button = ttk.Button(root, text="View", command=lambda: view_password(password_listbox, loaded_passwords))
-    view_button.grid(row=4, column=2, padx=5, pady=5)
+        add_layout.addWidget(QLabel("Website:"))
+        self.website_entry = QLineEdit()
+        add_layout.addWidget(self.website_entry)
 
-    delete_button = ttk.Button(root, text="Delete", command=lambda: delete_password(password_listbox, loaded_passwords))
-    delete_button.grid(row=5, column=2, padx=5, pady=5)
+        add_layout.addWidget(QLabel("Username:"))
+        self.username_entry = QLineEdit()
+        add_layout.addWidget(self.username_entry)
 
-    exit_button = ttk.Button(root, text="Exit", command=lambda: exit_app(root))
-    exit_button.grid(row=6, column=2, padx=5, pady=5)
+        add_layout.addWidget(QLabel("Password:"))
+        self.password_entry = QLineEdit()
+        self.password_entry.setEchoMode(QLineEdit.EchoMode.Password)
+        add_layout.addWidget(self.password_entry)
 
-    update_password_list(password_listbox, loaded_passwords)
+        button_layout = QHBoxLayout()
+        generate_button = QPushButton("Generate Password")
+        generate_button.clicked.connect(self.generate_password)
+        button_layout.addWidget(generate_button)
 
-    root.mainloop()
+        add_button = QPushButton("Add Password")
+        add_button.clicked.connect(self.add_password)
+        button_layout.addWidget(add_button)
 
-verify_master_password()
+        add_layout.addLayout(button_layout)
 
+        tabs.addTab(add_tab, "Add Password")
+
+        view_tab = QWidget()
+        view_layout = QVBoxLayout()
+        view_tab.setLayout(view_layout)
+
+        self.password_tree = QTreeWidget()
+        self.password_tree.setHeaderLabels(["Website", "Username"])
+        view_layout.addWidget(self.password_tree)
+
+        view_button_layout = QHBoxLayout()
+        view_button = QPushButton("View Password")
+        view_button.clicked.connect(self.view_password)
+        view_button_layout.addWidget(view_button)
+
+        delete_button = QPushButton("Delete Password")
+        delete_button.clicked.connect(self.delete_password)
+        view_button_layout.addWidget(delete_button)
+
+        view_layout.addLayout(view_button_layout)
+
+        tabs.addTab(view_tab, "View Passwords")
+
+    def generate_password(self):
+        password = secrets.token_urlsafe(16)
+        self.password_entry.setText(password)
+
+    def add_password(self):
+        website = self.website_entry.text()
+        username = self.username_entry.text()
+        password = self.password_entry.text()
+
+        if website and username and password:
+            self.password_manager.add_password(website, username, password)
+            QMessageBox.information(self, "Success", "Password added successfully!")
+            self.website_entry.clear()
+            self.username_entry.clear()
+            self.password_entry.clear()
+            self.refresh_password_list()
+        else:
+            QMessageBox.warning(self, "Error", "Please fill in all fields!")
+
+    def view_password(self):
+        selected_items = self.password_tree.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            index = self.password_tree.indexOfTopLevelItem(item)
+            password_entry = self.password_manager.get_password(index)
+            QMessageBox.information(self, "Password Details",
+                                    f"Website: {password_entry['website']}\n"
+                                    f"Username: {password_entry['username']}\n"
+                                    f"Password: {password_entry['password']}")
+        else:
+            QMessageBox.warning(self, "Error", "Please select a password entry!")
+
+    def delete_password(self):
+        selected_items = self.password_tree.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            index = self.password_tree.indexOfTopLevelItem(item)
+            self.password_manager.delete_password(index)
+            self.refresh_password_list()
+            QMessageBox.information(self, "Success", "Password deleted successfully!")
+        else:
+            QMessageBox.warning(self, "Error", "Please select a password entry!")
+
+    def refresh_password_list(self):
+        self.password_tree.clear()
+        for password in self.password_manager.get_all_passwords():
+            item = QTreeWidgetItem([password["website"], password["username"]])
+            self.password_tree.addTopLevelItem(item)
+
+    def run(self):
+        master_password, ok = QInputDialog.getText(self, "Master Password", "Enter your master password:", QLineEdit.EchoMode.Password)
+        if ok and master_password:
+            if self.password_manager.verify_master_password(master_password):
+                self.password_manager.decrypt_passwords()
+                self.refresh_password_list()
+                self.show()
+            else:
+                QMessageBox.critical(self, "Error", "Incorrect master password!")
+                sys.exit()
+        else:
+            sys.exit()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    ModernStyle.set_style(app)
+    password_manager_gui = PasswordManagerGUI()
+    password_manager_gui.run()
+    sys.exit(app.exec())
