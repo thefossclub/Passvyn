@@ -29,159 +29,226 @@ import pyperclip
 ORG_NAME = "V8V88V8V88"
 APP_NAME = "Passvyn: PasswordManager"
 
+# Define icon paths (relative to main.py)
+ICON_DIR = "icons"
+ICON_ADD = os.path.join(ICON_DIR, "plus-circle.svg")
+ICON_DELETE = os.path.join(ICON_DIR, "trash-2.svg")
+ICON_COPY = os.path.join(ICON_DIR, "copy.svg")
+ICON_SHOW = os.path.join(ICON_DIR, "eye.svg")
+ICON_HIDE = os.path.join(ICON_DIR, "eye-off.svg")
+ICON_SCAN = os.path.join(ICON_DIR, "camera.svg")
+ICON_GENERATE = os.path.join(ICON_DIR, "refresh-cw.svg")
+ICON_OK = os.path.join(ICON_DIR, "check.svg")
+ICON_CANCEL = os.path.join(ICON_DIR, "x.svg")
+ICON_TAB_ADD = os.path.join(ICON_DIR, "file-plus.svg")
+ICON_TAB_VIEW = os.path.join(ICON_DIR, "list.svg")
+ICON_TAB_AUTH = os.path.join(ICON_DIR, "shield.svg")
+
 class ModernStyle:
     @staticmethod
     def set_style(app):
         app.setStyle(QStyleFactory.create("Fusion"))
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(45, 45, 45))
-        palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.Base, QColor(30, 30, 30))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(55, 55, 55))
+        # Very Dark macOS inspired Palette
+        COLOR_WINDOW_BG = QColor("#1e1e1e")      # Near black
+        COLOR_BASE_BG = QColor("#2a2a2a")        # Input field, list bg
+        COLOR_ALT_BASE_BG = QColor("#333333")  # Alternate list row, group box
+        COLOR_BUTTON_BG = QColor("#3a3a3a")      # Button bg
+        COLOR_HIGHLIGHT = QColor("#0A84FF")      # macOS Blue
+        COLOR_HIGHLIGHT_TEXT = Qt.GlobalColor.white
+        COLOR_TEXT = QColor("#e0e0e0")           # Light gray text
+        COLOR_TEXT_DIM = QColor("#a0a0a0")       # Dimmer text
+        COLOR_BORDER = QColor("#484848")         # Subtle borders
+
+        palette.setColor(QPalette.ColorRole.Window, COLOR_WINDOW_BG)
+        palette.setColor(QPalette.ColorRole.WindowText, COLOR_TEXT)
+        palette.setColor(QPalette.ColorRole.Base, COLOR_BASE_BG)
+        palette.setColor(QPalette.ColorRole.AlternateBase, COLOR_ALT_BASE_BG)
         palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
         palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
-        palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.Button, QColor(60, 60, 60))
-        palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
-        palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(52, 150, 238))
-        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Text, COLOR_TEXT)
+        palette.setColor(QPalette.ColorRole.Button, COLOR_BUTTON_BG)
+        palette.setColor(QPalette.ColorRole.ButtonText, COLOR_TEXT)
+        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+        palette.setColor(QPalette.ColorRole.Link, COLOR_HIGHLIGHT)
+        palette.setColor(QPalette.ColorRole.Highlight, COLOR_HIGHLIGHT)
+        palette.setColor(QPalette.ColorRole.HighlightedText, COLOR_HIGHLIGHT_TEXT)
         app.setPalette(palette)
         
-        app.setStyleSheet("""
-            QWidget {
-                border-radius: 4px;
-                font-size: 10pt;
-            }
-            QMainWindow, QDialog {
-                 background-color: #2d2d2d;
-            }
-            QTabWidget::pane { 
-                border: 1px solid #4a4a4a;
-                border-radius: 4px;
-                padding: 15px;
-                background-color: #383838;
-            }
-            QTabBar::tab {
-                background-color: #2f2f2f;
-                color: #bbb;
+        # Enhanced Stylesheet for Dark macOS Look
+        app.setStyleSheet(f"""
+            QWidget {{ 
+                font-size: 10pt; 
+                color: {COLOR_TEXT.name()};
+            }}
+            QMainWindow, QDialog {{ 
+                 background-color: {COLOR_WINDOW_BG.name()}; 
+            }}
+            QTabWidget::pane {{ 
+                border: 1px solid {COLOR_BORDER.name()}; 
+                border-top: none; /* Pane border only on sides/bottom */
+                border-radius: 0px; /* Sharp corners for pane */
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
+                padding: 18px;
+                background-color: {COLOR_BASE_BG.name()}; 
+            }}
+            QTabBar::tab {{
+                background-color: {COLOR_BUTTON_BG.name()};
+                color: {COLOR_TEXT_DIM.name()}; 
                 padding: 10px 25px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                border: 1px solid #4a4a4a;
-                border-bottom: none;
-                margin-right: 2px;
-            }
-            QTabBar::tab:selected {
-                background-color: #383838;
+                border-top-left-radius: 6px; /* Slightly rounder tabs */
+                border-top-right-radius: 6px;
+                border: 1px solid {COLOR_BORDER.name()};
+                border-bottom: none; 
+                margin-right: 1px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {COLOR_BASE_BG.name()}; /* Match pane */
+                color: {COLOR_TEXT.name()};
+                font-weight: bold;
+                /* Make selected tab merge with pane */
+                margin-bottom: -1px; 
+            }}
+            QTabBar::tab:hover {{
+                background-color: {COLOR_ALT_BASE_BG.name()};
+                color: white;
+            }}
+            /* Primary action button style */
+            QPushButton#PrimaryButton, QPushButton[primary="true"] {{
+                background-color: {COLOR_HIGHLIGHT.name()};
                 color: white;
                 font-weight: bold;
-                border-bottom: 1px solid #383838;
-            }
-            QTabBar::tab:hover {
-                background-color: #444;
-            }
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                padding: 8px 18px;
-                border-radius: 4px;
-                font-weight: bold;
+            }}
+            QPushButton#PrimaryButton:hover, QPushButton[primary="true"]:hover {{
+                background-color: {COLOR_HIGHLIGHT.lighter(120).name()};
+            }}
+            QPushButton#PrimaryButton:pressed, QPushButton[primary="true"]:pressed {{
+                background-color: {COLOR_HIGHLIGHT.darker(120).name()};
+            }}
+            /* Standard button style */
+            QPushButton {{
+                background-color: {COLOR_BUTTON_BG.name()};
+                color: {COLOR_TEXT.name()};
+                border: 1px solid {COLOR_BORDER.name()};
+                padding: 8px 15px; 
+                border-radius: 5px;
                 min-height: 20px;
-            }
-            QPushButton:hover {
-                background-color: #4aa9e8;
-            }
-            QPushButton:pressed {
-                background-color: #2488cb;
-            }
-            QPushButton#ScanButton {
-                 background-color: #2ecc71;
-                 padding: 12px;
-            }
-            QPushButton#ScanButton:hover { background-color: #3fdc81; }
-            QPushButton#ScanButton:pressed { background-color: #1ebb61; }
-            QPushButton#DeleteButton {
-                 background-color: #e74c3c;
-            }
-            QPushButton#DeleteButton:hover { background-color: #f85c4c; }
-            QPushButton#DeleteButton:pressed { background-color: #d73c2c; }
-            QLineEdit {
-                padding: 8px;
-                border: 1px solid #555;
-                border-radius: 4px;
-                background-color: #2c2c2c;
-                color: #eee;
-            }
-            QGroupBox {
-                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #424242, stop:1 #3a3a3a);
-                 border: 1px solid #555;
-                 border-radius: 5px;
-                 margin-top: 1ex;
-                 padding: 15px;
-                 padding-top: 20px;
-                 font-weight: bold;
-            }
-            QGroupBox::title {
-                 subcontrol-origin: margin;
-                 subcontrol-position: top left;
-                 padding: 3px 8px;
-                 left: 15px;
-                 color: #eee;
-                 background-color: #555;
-                 border-radius: 3px;
-            }
-            QTreeWidget, QListWidget {
-                border: 1px solid #555;
-                border-radius: 4px;
-                background-color: #333;
-                padding: 5px;
-                alternate-background-color: #3a3a3a;
-            }
-            QTreeWidget::item, QListWidget::item {
-                 padding: 5px;
-                 border-radius: 3px;
-            }
-            QTreeWidget::item:selected, QListWidget::item:selected {
-                 background-color: #3498db;
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_ALT_BASE_BG.name()};
+                border-color: {COLOR_TEXT_DIM.name()};
+            }}
+            QPushButton:pressed {{
+                background-color: {COLOR_BASE_BG.name()};
+            }}
+            /* Destructive action button style */
+            QPushButton#DeleteButton {{
+                 background-color: {COLOR_BUTTON_BG.name()};
+                 color: #f77; /* Light red text */
+                 border: 1px solid #733;
+            }}
+            QPushButton#DeleteButton:hover {{ background-color: #533; border-color: #944; }}
+            QPushButton#DeleteButton:pressed {{ background-color: #422; }}
+            /* Scan button style */
+             QPushButton#ScanButton {{
+                 background-color: #28a745; /* Green */
                  color: white;
-            }
-            QLabel {
+                 border: none;
+                 font-weight: bold;
+            }}
+            QPushButton#ScanButton:hover {{ background-color: #2fbf50; }}
+            QPushButton#ScanButton:pressed {{ background-color: #1e8735; }}
+            /* Icon-only button styling */
+             QPushButton[icon-button="true"] {{
                  background-color: transparent;
-                 padding: 2px;
-                 color: #ddd;
-            }
-            QLabel#CodeLabel {
-                 color: white;
-                 font-size: 28pt;
+                 border: none;
+                 padding: 4px;
+                 border-radius: 4px;
+                 min-width: 28px; /* Ensure space for icon */
+                 max-width: 28px;
+                 min-height: 28px;
+                 max-height: 28px;
+             }}
+             QPushButton[icon-button="true"]:hover {{
+                 background-color: {COLOR_ALT_BASE_BG.name()};
+             }}
+             QPushButton[icon-button="true"]:pressed {{
+                 background-color: {COLOR_BASE_BG.name()};
+             }}
+            QLineEdit {{
+                padding: 9px;
+                border: 1px solid {COLOR_BORDER.name()};
+                border-radius: 5px;
+                background-color: {COLOR_WINDOW_BG.name()}; /* Match window bg */
+                color: {COLOR_TEXT.name()};
+            }}
+            QGroupBox {{
+                 background-color: {COLOR_ALT_BASE_BG.name()};
+                 border: 1px solid {COLOR_BORDER.name()};
+                 border-radius: 6px;
+                 margin-top: 1ex;
+                 padding: 18px;
+                 padding-top: 25px;
+            }}
+            QGroupBox::title {{
+                 subcontrol-origin: margin;
+                 subcontrol-position: top left; 
+                 padding: 4px 10px;
+                 left: 15px; 
+                 color: {COLOR_TEXT.name()};
+                 background-color: transparent; /* Title blends more */
                  font-weight: bold;
-                 margin-right: 10px;
-            }
-            QLabel#CodeLabel[expiring="true"] {
-                 color: #f39c12;
-            }
-            QProgressBar {
-                 border: 1px solid #666;
+                 border: none;
+            }}
+            QTreeWidget, QListWidget {{
+                border: 1px solid {COLOR_BORDER.name()};
+                border-radius: 5px;
+                background-color: {COLOR_BASE_BG.name()};
+                padding: 5px;
+                alternate-background-color: {COLOR_ALT_BASE_BG.darker(110).name()}; 
+            }}
+            QTreeWidget::item, QListWidget::item {{
+                 padding: 6px; 
+                 border-radius: 4px; 
+                 color: {COLOR_TEXT_DIM.name()};
+            }}
+            QTreeWidget::item:selected, QListWidget::item:selected {{
+                 background-color: {COLOR_HIGHLIGHT.name()}; 
+                 color: white;
+            }}
+            QLabel {{
+                 background-color: transparent; 
+                 padding: 2px; 
+                 color: {COLOR_TEXT_DIM.name()}; 
+            }}
+            QLabel#CodeLabel {{
+                 color: {COLOR_TEXT.name()}; /* White code */
+                 font-size: 30pt; /* Slightly larger */
+                 font-weight: bold; 
+                 margin-right: 5px; /* Reduced margin */
+            }}
+            QLabel#CodeLabel[expiring="true"] {{ 
+                 color: #f39c12; /* Orange */
+            }}
+            QProgressBar {{
+                 border: none; /* Remove border */
                  border-radius: 5px;
                  text-align: center;
-                 background-color: #222;
-                 height: 10px;
-            }
-            QProgressBar::chunk {
-                 background-color: #3498db;
-                 width: 1px;
-                 border-radius: 4px;
-            }
-            QStatusBar {
-                background-color: #2a2a2a;
-                color: #aaa;
+                 background-color: {COLOR_BASE_BG.name()};
+                 height: 6px; /* Slimmer */
+            }}
+            QProgressBar::chunk {{
+                 background-color: {COLOR_HIGHLIGHT.name()}; 
+                 border-radius: 3px;
+            }}
+            QStatusBar {{ 
+                background-color: {COLOR_WINDOW_BG.name()};
+                border-top: 1px solid {COLOR_BORDER.name()};
+                color: {COLOR_TEXT_DIM.name()};
                 font-size: 9pt;
-            }
-            QStatusBar::item {
-                border: none;
-            }
+             }}
+            QStatusBar::item {{ border: none; }}
         """)
 
 class SecuredPasswordManager:
@@ -336,38 +403,32 @@ class AddTotpAccountDialog(QDialog):
         self.setWindowTitle("Add Authenticator Account")
         self.setMinimumWidth(450)
         self.new_account_details = None
-
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-
         scan_group = QGroupBox("Scan QR Code")
         scan_layout = QVBoxLayout(scan_group)
-        scan_qr_button = QPushButton(QIcon.fromTheme("camera-web"), " Scan QR Code Now")
-        scan_qr_button.setObjectName("ScanButton")
+        scan_qr_button = QPushButton(QIcon(ICON_SCAN), " Scan QR Code Now") 
+        scan_qr_button.setObjectName("ScanButton") 
         scan_qr_button.setStyleSheet("padding: 12px;") 
         scan_qr_button.setToolTip("Open camera to scan the TOTP QR code")
         scan_qr_button.clicked.connect(self.scan_qr_code_internal)
         scan_layout.addWidget(scan_qr_button)
         layout.addWidget(scan_group)
-
         manual_group = QGroupBox("Or Enter Manually")
         manual_layout = QGridLayout(manual_group)
         manual_layout.setSpacing(10)
-        
         manual_layout.addWidget(QLabel("Account Name:"), 0, 0)
         self.account_name_entry = QLineEdit()
         self.account_name_entry.setPlaceholderText("e.g., Google (myemail@...)")
         manual_layout.addWidget(self.account_name_entry, 0, 1)
-
         manual_layout.addWidget(QLabel("Secret Key (Base32):"), 1, 0)
         self.secret_key_entry = QLineEdit()
         self.secret_key_entry.setPlaceholderText("Paste Base32 secret")
         manual_layout.addWidget(self.secret_key_entry, 1, 1)
         layout.addWidget(manual_group)
-
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.button(QDialogButtonBox.StandardButton.Ok).setIcon(QIcon.fromTheme("dialog-ok-apply"))
-        button_box.button(QDialogButtonBox.StandardButton.Cancel).setIcon(QIcon.fromTheme("dialog-cancel"))
+        button_box.button(QDialogButtonBox.StandardButton.Ok).setIcon(QIcon(ICON_OK))
+        button_box.button(QDialogButtonBox.StandardButton.Cancel).setIcon(QIcon(ICON_CANCEL))
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -465,10 +526,10 @@ class PasswordManagerGUI(QMainWindow):
 
         add_tab = QWidget()
         add_layout = QVBoxLayout(add_tab)
-        add_layout.setSpacing(10)
+        add_layout.setSpacing(15)
 
         add_form_layout = QGridLayout()
-        add_form_layout.setSpacing(10)
+        add_form_layout.setSpacing(12)
         add_form_layout.addWidget(QLabel("Website:"), 0, 0)
         self.website_entry = QLineEdit()
         add_form_layout.addWidget(self.website_entry, 0, 1)
@@ -486,21 +547,22 @@ class PasswordManagerGUI(QMainWindow):
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
         button_layout.addStretch(1)
-        generate_button = QPushButton(QIcon.fromTheme("process-working"), " Generate Password")
+        generate_button = QPushButton(QIcon(ICON_GENERATE), " Generate Password")
         generate_button.setToolTip("Generate a strong random password")
         generate_button.clicked.connect(self.generate_password)
         button_layout.addWidget(generate_button)
-        add_button = QPushButton(QIcon.fromTheme("list-add"), " Add Entry")
+        add_button = QPushButton(QIcon(ICON_ADD), " Add Entry")
+        add_button.setProperty("primary", True)
         add_button.setToolTip("Save this password entry")
         add_button.clicked.connect(self.add_entry)
         button_layout.addWidget(add_button)
         add_layout.addLayout(button_layout)
         add_layout.addStretch(1)
-        self.tabs.addTab(add_tab, QIcon.fromTheme("document-new"), "Add Entry")
+        self.tabs.addTab(add_tab, QIcon(ICON_TAB_ADD), "Add Entry")
 
         view_tab = QWidget()
         view_layout = QVBoxLayout(view_tab)
-        view_layout.setSpacing(10)
+        view_layout.setSpacing(15)
 
         self.password_tree = QTreeWidget()
         self.password_tree.setHeaderLabels(["Website", "Username"])
@@ -520,9 +582,9 @@ class PasswordManagerGUI(QMainWindow):
         self.details_username_label = QLabel("-")
         self.details_username_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         details_layout.addWidget(self.details_username_label, 1, 1)
-        self.copy_username_button = QPushButton(QIcon.fromTheme("edit-copy"), "")
+        self.copy_username_button = QPushButton(QIcon(ICON_COPY), "")
+        self.copy_username_button.setProperty("icon-button", True)
         self.copy_username_button.setToolTip("Copy Username")
-        self.copy_username_button.setFixedSize(QSize(32, 32))
         self.copy_username_button.clicked.connect(lambda: self.copy_to_clipboard(self.details_username_label.text()))
         details_layout.addWidget(self.copy_username_button, 1, 2)
 
@@ -532,19 +594,19 @@ class PasswordManagerGUI(QMainWindow):
         self.details_password_label = QLineEdit("********")
         self.details_password_label.setReadOnly(True)
         self.details_password_label.setEchoMode(QLineEdit.EchoMode.Password)
-        self.details_password_label.setStyleSheet("background-color: transparent; border: none;")
+        self.details_password_label.setStyleSheet("background-color: transparent; border: none; padding: 0px;")
         self.details_password_label.setProperty("password_hidden", True)
         self.details_password_label.setProperty("actual_password", "")
         password_layout.addWidget(self.details_password_label, 1)
-        self.toggle_pass_button = QPushButton(QIcon.fromTheme("dialog-password"), "")
-        self.toggle_pass_button.setToolTip("Show/Hide Password")
+        self.toggle_pass_button = QPushButton(QIcon(ICON_SHOW), "")
+        self.toggle_pass_button.setProperty("icon-button", True)
+        self.toggle_pass_button.setToolTip("Show Password")
         self.toggle_pass_button.setCheckable(True)
-        self.toggle_pass_button.setFixedSize(QSize(32, 32))
         self.toggle_pass_button.toggled.connect(self.toggle_view_password)
         password_layout.addWidget(self.toggle_pass_button)
-        self.copy_password_button = QPushButton(QIcon.fromTheme("edit-copy"), "")
+        self.copy_password_button = QPushButton(QIcon(ICON_COPY), "")
+        self.copy_password_button.setProperty("icon-button", True)
         self.copy_password_button.setToolTip("Copy Password")
-        self.copy_password_button.setFixedSize(QSize(32, 32))
         self.copy_password_button.clicked.connect(lambda: self.copy_to_clipboard(self.details_password_label.property("actual_password")))
         self.copy_password_button.setEnabled(False)
         password_layout.addWidget(self.copy_password_button)
@@ -556,28 +618,28 @@ class PasswordManagerGUI(QMainWindow):
 
         view_button_layout = QHBoxLayout()
         view_button_layout.addStretch(1)
-        delete_button = QPushButton(QIcon.fromTheme("edit-delete"), " Delete Entry")
+        delete_button = QPushButton(QIcon(ICON_DELETE), " Delete Entry")
         delete_button.setObjectName("DeleteButton")
         delete_button.setToolTip("Delete the selected password entry")
         delete_button.clicked.connect(self.delete_selected_entry)
         view_button_layout.addWidget(delete_button)
         view_layout.addLayout(view_button_layout)
 
-        self.tabs.addTab(view_tab, QIcon.fromTheme("folder"), "View Entries")
+        self.tabs.addTab(view_tab, QIcon(ICON_TAB_VIEW), "View Entries")
 
         auth_tab = QWidget()
         auth_tab_layout = QHBoxLayout(auth_tab)
-        auth_tab_layout.setSpacing(10)
+        auth_tab_layout.setSpacing(15)
 
         view_codes_left_pane = QVBoxLayout()
-        view_codes_left_pane.setSpacing(8)
+        view_codes_left_pane.setSpacing(10)
         view_codes_left_pane.addWidget(QLabel("Authenticator Accounts:"))
         self.totp_account_list = QListWidget()
         self.totp_account_list.itemSelectionChanged.connect(self.display_totp_details)
         self.totp_account_list.setAlternatingRowColors(True)
         view_codes_left_pane.addWidget(self.totp_account_list, 1)
 
-        add_new_account_button = QPushButton(QIcon.fromTheme("list-add"), " Add Account...")
+        add_new_account_button = QPushButton(QIcon(ICON_ADD), " Add Account...")
         add_new_account_button.setToolTip("Add a new account for TOTP code generation")
         add_new_account_button.clicked.connect(self.open_add_totp_dialog)
         view_codes_left_pane.addWidget(add_new_account_button)
@@ -585,7 +647,7 @@ class PasswordManagerGUI(QMainWindow):
         view_codes_right_pane = QVBoxLayout()
         self.totp_details_group = QGroupBox("Current Code")
         totp_details_layout = QVBoxLayout(self.totp_details_group)
-        totp_details_layout.setSpacing(8)
+        totp_details_layout.setSpacing(10)
         self.totp_details_name_label = QLabel("<i>Select an account</i>")
         self.totp_details_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         totp_details_layout.addWidget(self.totp_details_name_label)
@@ -598,9 +660,9 @@ class PasswordManagerGUI(QMainWindow):
         self.totp_details_code_label.mousePressEvent = self.copy_current_totp_code
         self.totp_details_code_label.setToolTip("Click code to copy")
         code_layout.addWidget(self.totp_details_code_label)
-        copy_totp_button = QPushButton(QIcon.fromTheme("edit-copy"), "")
+        copy_totp_button = QPushButton(QIcon(ICON_COPY), "")
+        copy_totp_button.setProperty("icon-button", True)
         copy_totp_button.setToolTip("Copy Code")
-        copy_totp_button.setFixedSize(QSize(32, 32))
         copy_totp_button.clicked.connect(self.copy_current_totp_code)
         code_layout.addWidget(copy_totp_button)
         code_layout.addStretch(1)
@@ -609,14 +671,14 @@ class PasswordManagerGUI(QMainWindow):
         self.totp_progressbar.setRange(0, 300)
         self.totp_progressbar.setValue(0)
         self.totp_progressbar.setTextVisible(False)
-        self.totp_progressbar.setFixedHeight(10)
+        self.totp_progressbar.setFixedHeight(6)
         totp_details_layout.addWidget(self.totp_progressbar)
         self.totp_seconds_label = QLabel("")
         self.totp_seconds_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.totp_seconds_label.setStyleSheet("font-size: 9pt; color: #aaa;")
+        self.totp_seconds_label.setStyleSheet("font-size: 9pt; color: #a0a0a0;")
         totp_details_layout.addWidget(self.totp_seconds_label)
         totp_details_layout.addStretch(1)
-        delete_totp_button = QPushButton(QIcon.fromTheme("edit-delete"), " Delete Account")
+        delete_totp_button = QPushButton(QIcon(ICON_DELETE), " Delete Account")
         delete_totp_button.setObjectName("DeleteButton")
         delete_totp_button.setToolTip("Delete the selected authenticator account")
         delete_totp_button.clicked.connect(self.delete_selected_totp_account)
@@ -627,7 +689,7 @@ class PasswordManagerGUI(QMainWindow):
         auth_tab_layout.addLayout(view_codes_left_pane, 1) 
         auth_tab_layout.addLayout(view_codes_right_pane, 1)
 
-        self.tabs.addTab(auth_tab, QIcon.fromTheme("preferences-system-time"), "Authenticator")
+        self.tabs.addTab(auth_tab, QIcon(ICON_TAB_AUTH), "Authenticator")
 
     def generate_password(self):
         password = secrets.token_urlsafe(16)
@@ -696,15 +758,18 @@ class PasswordManagerGUI(QMainWindow):
             if checked:
                 self.details_password_label.setEchoMode(QLineEdit.EchoMode.Normal)
                 self.details_password_label.setText(actual_password)
+                self.toggle_pass_button.setIcon(QIcon(ICON_HIDE))
                 self.toggle_pass_button.setToolTip("Hide Password")
                 self.copy_password_button.setEnabled(bool(actual_password))
             else:
                 self.details_password_label.setEchoMode(QLineEdit.EchoMode.Password)
                 self.details_password_label.setText("********")
+                self.toggle_pass_button.setIcon(QIcon(ICON_SHOW))
                 self.toggle_pass_button.setToolTip("Show Password")
                 self.copy_password_button.setEnabled(False)
         else:
             self.toggle_pass_button.setChecked(False)
+            self.toggle_pass_button.setIcon(QIcon(ICON_SHOW))
             self.copy_password_button.setEnabled(False)
 
     def delete_selected_entry(self):
