@@ -43,6 +43,7 @@ ICON_CANCEL = os.path.join(ICON_DIR, "x.svg")
 ICON_TAB_ADD = os.path.join(ICON_DIR, "file-plus.svg")
 ICON_TAB_VIEW = os.path.join(ICON_DIR, "list.svg")
 ICON_TAB_AUTH = os.path.join(ICON_DIR, "shield.svg")
+ICON_LOCK = os.path.join(ICON_DIR, "lock.svg")
 
 class ModernStyle:
     @staticmethod
@@ -78,7 +79,7 @@ class ModernStyle:
         # Enhanced Stylesheet for Dark macOS Look
         app.setStyleSheet(f"""
             QWidget {{ 
-                font-size: 10pt; 
+                /* font-size: 10pt; */ /* REMOVED - Use system default */
                 color: {COLOR_TEXT.name()};
             }}
             QMainWindow, QDialog {{ 
@@ -504,6 +505,7 @@ class AddTotpAccountDialog(QDialog):
 class PasswordManagerGUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QIcon(ICON_LOCK))
         self.password_manager = SecuredPasswordManager()
         self.password_manager.load_config()
         self.totp_timer = QTimer(self)
