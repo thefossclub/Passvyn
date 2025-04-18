@@ -8,9 +8,11 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QWidget, QVB
                              QHBoxLayout, QLabel, QLineEdit, QPushButton, QTreeWidget, 
                              QTreeWidgetItem, QMessageBox, QInputDialog, QStyleFactory,
                              QListWidget, QListWidgetItem, QGroupBox, QGridLayout, 
-                             QStackedWidget, QSpacerItem, QSizePolicy)
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QPalette, QColor
+                             QStackedWidget, QSpacerItem, QSizePolicy, 
+                             QProgressBar, QMenu, 
+                             QDialog, QDialogButtonBox)
+from PyQt6.QtCore import Qt, QTimer, QSettings, QSize
+from PyQt6.QtGui import QPalette, QColor, QAction, QIcon
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -21,63 +23,164 @@ import time
 import cv2
 from pyzbar import pyzbar
 import urllib.parse
+import pyperclip
+
+# App details for QSettings
+ORG_NAME = "V8V88V8V88"
+APP_NAME = "Passvyn: PasswordManager"
 
 class ModernStyle:
     @staticmethod
     def set_style(app):
         app.setStyle(QStyleFactory.create("Fusion"))
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.Window, QColor(45, 45, 45))
         palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Base, QColor(30, 30, 30))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(55, 55, 55))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
         palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        palette.setColor(QPalette.ColorRole.Button, QColor(60, 60, 60))
         palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
         palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(52, 150, 238))
+        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
         app.setPalette(palette)
         
         app.setStyleSheet("""
             QWidget {
-                border-radius: 5px;
+                border-radius: 4px;
+                font-size: 10pt;
             }
-            QPushButton {
-                background-color: #2a82da;
-                color: white;
-                border: none;
-                padding: 5px 15px;
-                border-radius: 5px;
+            QMainWindow, QDialog {
+                 background-color: #2d2d2d;
             }
-            QPushButton:hover {
-                background-color: #3a92ea;
-            }
-            QLineEdit {
-                padding: 5px;
-                border: 1px solid #555;
-                border-radius: 5px;
-            }
-            QTabWidget::pane {
-                border: 1px solid #555;
-                border-radius: 5px;
+            QTabWidget::pane { 
+                border: 1px solid #4a4a4a;
+                border-radius: 4px;
+                padding: 15px;
+                background-color: #383838;
             }
             QTabBar::tab {
-                background-color: #2a2a2a;
-                color: white;
-                padding: 8px 20px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
+                background-color: #2f2f2f;
+                color: #bbb;
+                padding: 10px 25px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                border: 1px solid #4a4a4a;
+                border-bottom: none;
+                margin-right: 2px;
             }
             QTabBar::tab:selected {
-                background-color: #3a3a3a;
+                background-color: #383838;
+                color: white;
+                font-weight: bold;
+                border-bottom: 1px solid #383838;
             }
-            QTreeWidget {
+            QTabBar::tab:hover {
+                background-color: #444;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 8px 18px;
+                border-radius: 4px;
+                font-weight: bold;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background-color: #4aa9e8;
+            }
+            QPushButton:pressed {
+                background-color: #2488cb;
+            }
+            QPushButton#ScanButton {
+                 background-color: #2ecc71;
+                 padding: 12px;
+            }
+            QPushButton#ScanButton:hover { background-color: #3fdc81; }
+            QPushButton#ScanButton:pressed { background-color: #1ebb61; }
+            QPushButton#DeleteButton {
+                 background-color: #e74c3c;
+            }
+            QPushButton#DeleteButton:hover { background-color: #f85c4c; }
+            QPushButton#DeleteButton:pressed { background-color: #d73c2c; }
+            QLineEdit {
+                padding: 8px;
                 border: 1px solid #555;
-                border-radius: 5px;
+                border-radius: 4px;
+                background-color: #2c2c2c;
+                color: #eee;
+            }
+            QGroupBox {
+                 background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #424242, stop:1 #3a3a3a);
+                 border: 1px solid #555;
+                 border-radius: 5px;
+                 margin-top: 1ex;
+                 padding: 15px;
+                 padding-top: 20px;
+                 font-weight: bold;
+            }
+            QGroupBox::title {
+                 subcontrol-origin: margin;
+                 subcontrol-position: top left;
+                 padding: 3px 8px;
+                 left: 15px;
+                 color: #eee;
+                 background-color: #555;
+                 border-radius: 3px;
+            }
+            QTreeWidget, QListWidget {
+                border: 1px solid #555;
+                border-radius: 4px;
+                background-color: #333;
+                padding: 5px;
+                alternate-background-color: #3a3a3a;
+            }
+            QTreeWidget::item, QListWidget::item {
+                 padding: 5px;
+                 border-radius: 3px;
+            }
+            QTreeWidget::item:selected, QListWidget::item:selected {
+                 background-color: #3498db;
+                 color: white;
+            }
+            QLabel {
+                 background-color: transparent;
+                 padding: 2px;
+                 color: #ddd;
+            }
+            QLabel#CodeLabel {
+                 color: white;
+                 font-size: 28pt;
+                 font-weight: bold;
+                 margin-right: 10px;
+            }
+            QLabel#CodeLabel[expiring="true"] {
+                 color: #f39c12;
+            }
+            QProgressBar {
+                 border: 1px solid #666;
+                 border-radius: 5px;
+                 text-align: center;
+                 background-color: #222;
+                 height: 10px;
+            }
+            QProgressBar::chunk {
+                 background-color: #3498db;
+                 width: 1px;
+                 border-radius: 4px;
+            }
+            QStatusBar {
+                background-color: #2a2a2a;
+                color: #aaa;
+                font-size: 9pt;
+            }
+            QStatusBar::item {
+                border: none;
             }
         """)
 
@@ -226,6 +329,117 @@ class SecuredPasswordManager:
                 return "Error"
         return None
 
+# --- Add TOTP Account Dialog ---
+class AddTotpAccountDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Authenticator Account")
+        self.setMinimumWidth(450)
+        self.new_account_details = None
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+
+        scan_group = QGroupBox("Scan QR Code")
+        scan_layout = QVBoxLayout(scan_group)
+        scan_qr_button = QPushButton(QIcon.fromTheme("camera-web"), " Scan QR Code Now")
+        scan_qr_button.setObjectName("ScanButton")
+        scan_qr_button.setStyleSheet("padding: 12px;") 
+        scan_qr_button.setToolTip("Open camera to scan the TOTP QR code")
+        scan_qr_button.clicked.connect(self.scan_qr_code_internal)
+        scan_layout.addWidget(scan_qr_button)
+        layout.addWidget(scan_group)
+
+        manual_group = QGroupBox("Or Enter Manually")
+        manual_layout = QGridLayout(manual_group)
+        manual_layout.setSpacing(10)
+        
+        manual_layout.addWidget(QLabel("Account Name:"), 0, 0)
+        self.account_name_entry = QLineEdit()
+        self.account_name_entry.setPlaceholderText("e.g., Google (myemail@...)")
+        manual_layout.addWidget(self.account_name_entry, 0, 1)
+
+        manual_layout.addWidget(QLabel("Secret Key (Base32):"), 1, 0)
+        self.secret_key_entry = QLineEdit()
+        self.secret_key_entry.setPlaceholderText("Paste Base32 secret")
+        manual_layout.addWidget(self.secret_key_entry, 1, 1)
+        layout.addWidget(manual_group)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        button_box.button(QDialogButtonBox.StandardButton.Ok).setIcon(QIcon.fromTheme("dialog-ok-apply"))
+        button_box.button(QDialogButtonBox.StandardButton.Cancel).setIcon(QIcon.fromTheme("dialog-cancel"))
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    def scan_qr_code_internal(self):
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            QMessageBox.critical(self, "Camera Error", "Could not open webcam.")
+            return
+        scanned_data = None
+        scan_window_name = "Scan TOTP QR Code - Press 'Q' to Quit"
+        while True:
+            ret, frame = cap.read()
+            if not ret: break
+            qrcodes = pyzbar.decode(frame)
+            found = False
+            for qr in qrcodes:
+                qr_data = qr.data.decode('utf-8')
+                if qr_data.startswith('otpauth://totp/'):
+                    scanned_data = qr_data
+                    found = True
+                    (x, y, w, h) = qr.rect
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    cv2.putText(frame, "OTP QR Found! Press Q", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    break
+            cv2.imshow(scan_window_name, frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q') or found: break
+        cap.release()
+        cv2.destroyWindow(scan_window_name)
+        cv2.waitKey(1); cv2.waitKey(1); cv2.waitKey(1); cv2.waitKey(1)
+
+        if scanned_data:
+            self.parse_otpauth_uri_internal(scanned_data)
+        # No message if cancelled, user just returns to dialog
+            
+    def parse_otpauth_uri_internal(self, uri):
+        try:
+            parsed_uri = urllib.parse.urlparse(uri)
+            params = urllib.parse.parse_qs(parsed_uri.query)
+            secret = params.get('secret', [None])[0]
+            if not secret: raise ValueError("Secret parameter not found")
+            path_parts = parsed_uri.path.strip('/').split(':', 1)
+            account_label = urllib.parse.unquote(path_parts[-1])
+            issuer = params.get('issuer', [None])[0]
+            if issuer: issuer = urllib.parse.unquote(issuer)
+            suggested_name = account_label
+            if issuer and issuer.lower() not in account_label.lower():
+                 suggested_name = f"{issuer} ({account_label})"
+            self.account_name_entry.setText(suggested_name)
+            self.secret_key_entry.setText(secret)
+            QMessageBox.information(self, "Scan Successful", "Account details populated. Verify and click OK.")
+        except Exception as e:
+            QMessageBox.critical(self, "URI Parse Error", f"Could not parse QR code: {e}")
+            self.secret_key_entry.clear()
+            self.account_name_entry.clear()
+
+    # Override accept to store data before closing
+    def accept(self):
+        name = self.account_name_entry.text().strip()
+        secret = self.secret_key_entry.text().strip()
+        if not name or not secret:
+            QMessageBox.warning(self, "Input Error", "Account name and secret key are required.")
+            return # Don't close dialog
+        
+        # Store details for the main window to retrieve
+        self.new_account_details = {"name": name, "secret": secret}
+        super().accept() # Close dialog with Accepted state
+
+    def get_new_account_details(self):
+        return self.new_account_details
+
 class PasswordManagerGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -234,196 +448,186 @@ class PasswordManagerGUI(QMainWindow):
         self.totp_timer = QTimer(self)
         self.totp_timer.timeout.connect(self.update_authenticator_display)
         self.currently_selected_totp_index = -1
+        self.currently_selected_index = -1
         self.init_ui()
+        self.load_settings()
 
     def init_ui(self):
-        self.setWindowTitle("Secured Password Manager")
-        self.setGeometry(100, 100, 700, 450)
+        self.setWindowTitle("Passvyn - Secured Password Manager")
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
-        main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
         self.tabs = QTabWidget()
         main_layout.addWidget(self.tabs)
 
         add_tab = QWidget()
-        add_layout = QVBoxLayout()
-        add_tab.setLayout(add_layout)
+        add_layout = QVBoxLayout(add_tab)
+        add_layout.setSpacing(10)
 
-        add_layout.addWidget(QLabel("Website:"))
+        add_form_layout = QGridLayout()
+        add_form_layout.setSpacing(10)
+        add_form_layout.addWidget(QLabel("Website:"), 0, 0)
         self.website_entry = QLineEdit()
-        add_layout.addWidget(self.website_entry)
+        add_form_layout.addWidget(self.website_entry, 0, 1)
 
-        add_layout.addWidget(QLabel("Username:"))
+        add_form_layout.addWidget(QLabel("Username:"), 1, 0)
         self.username_entry = QLineEdit()
-        add_layout.addWidget(self.username_entry)
+        add_form_layout.addWidget(self.username_entry, 1, 1)
 
-        add_layout.addWidget(QLabel("Password:"))
+        add_form_layout.addWidget(QLabel("Password:"), 2, 0)
         self.password_entry = QLineEdit()
         self.password_entry.setEchoMode(QLineEdit.EchoMode.Password)
-        add_layout.addWidget(self.password_entry)
+        add_form_layout.addWidget(self.password_entry, 2, 1)
+        add_layout.addLayout(add_form_layout)
 
         button_layout = QHBoxLayout()
-        generate_button = QPushButton("Generate Password")
+        button_layout.setSpacing(10)
+        button_layout.addStretch(1)
+        generate_button = QPushButton(QIcon.fromTheme("process-working"), " Generate Password")
+        generate_button.setToolTip("Generate a strong random password")
         generate_button.clicked.connect(self.generate_password)
         button_layout.addWidget(generate_button)
-
-        add_button = QPushButton("Add Entry")
+        add_button = QPushButton(QIcon.fromTheme("list-add"), " Add Entry")
+        add_button.setToolTip("Save this password entry")
         add_button.clicked.connect(self.add_entry)
         button_layout.addWidget(add_button)
-
         add_layout.addLayout(button_layout)
-        add_layout.addStretch()
-        self.tabs.addTab(add_tab, "Add Entry")
+        add_layout.addStretch(1)
+        self.tabs.addTab(add_tab, QIcon.fromTheme("document-new"), "Add Entry")
 
         view_tab = QWidget()
-        view_layout = QVBoxLayout()
-        view_tab.setLayout(view_layout)
+        view_layout = QVBoxLayout(view_tab)
+        view_layout.setSpacing(10)
 
         self.password_tree = QTreeWidget()
         self.password_tree.setHeaderLabels(["Website", "Username"])
         self.password_tree.itemSelectionChanged.connect(self.display_entry_details)
-        view_layout.addWidget(self.password_tree)
+        self.password_tree.setAlternatingRowColors(True)
+        view_layout.addWidget(self.password_tree, 1)
         
         self.details_group = QGroupBox("Selected Entry Details")
-        details_layout = QGridLayout()
-        self.details_group.setLayout(details_layout)
+        details_layout = QGridLayout(self.details_group)
+        details_layout.setSpacing(10)
 
         details_layout.addWidget(QLabel("Website:"), 0, 0)
         self.details_website_label = QLabel("-")
-        details_layout.addWidget(self.details_website_label, 0, 1)
+        details_layout.addWidget(self.details_website_label, 0, 1, 1, 2)
 
         details_layout.addWidget(QLabel("Username:"), 1, 0)
         self.details_username_label = QLabel("-")
+        self.details_username_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         details_layout.addWidget(self.details_username_label, 1, 1)
+        self.copy_username_button = QPushButton(QIcon.fromTheme("edit-copy"), "")
+        self.copy_username_button.setToolTip("Copy Username")
+        self.copy_username_button.setFixedSize(QSize(32, 32))
+        self.copy_username_button.clicked.connect(lambda: self.copy_to_clipboard(self.details_username_label.text()))
+        details_layout.addWidget(self.copy_username_button, 1, 2)
 
         details_layout.addWidget(QLabel("Password:"), 2, 0)
-        self.details_password_label = QLabel("-")
-        self.details_password_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(self.details_password_label, 2, 1)
-        
-        details_layout.addWidget(QLabel("TOTP Code:"), 3, 0)
-        self.details_totp_code_label = QLabel("-")
-        self.details_totp_code_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
-        self.details_totp_code_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(self.details_totp_code_label, 3, 1)
-
-        self.details_totp_progressbar = QLabel("")
-        details_layout.addWidget(self.details_totp_progressbar, 4, 0, 1, 2)
+        password_layout = QHBoxLayout()
+        password_layout.setSpacing(5)
+        self.details_password_label = QLineEdit("********")
+        self.details_password_label.setReadOnly(True)
+        self.details_password_label.setEchoMode(QLineEdit.EchoMode.Password)
+        self.details_password_label.setStyleSheet("background-color: transparent; border: none;")
+        self.details_password_label.setProperty("password_hidden", True)
+        self.details_password_label.setProperty("actual_password", "")
+        password_layout.addWidget(self.details_password_label, 1)
+        self.toggle_pass_button = QPushButton(QIcon.fromTheme("dialog-password"), "")
+        self.toggle_pass_button.setToolTip("Show/Hide Password")
+        self.toggle_pass_button.setCheckable(True)
+        self.toggle_pass_button.setFixedSize(QSize(32, 32))
+        self.toggle_pass_button.toggled.connect(self.toggle_view_password)
+        password_layout.addWidget(self.toggle_pass_button)
+        self.copy_password_button = QPushButton(QIcon.fromTheme("edit-copy"), "")
+        self.copy_password_button.setToolTip("Copy Password")
+        self.copy_password_button.setFixedSize(QSize(32, 32))
+        self.copy_password_button.clicked.connect(lambda: self.copy_to_clipboard(self.details_password_label.property("actual_password")))
+        self.copy_password_button.setEnabled(False)
+        password_layout.addWidget(self.copy_password_button)
+        details_layout.addLayout(password_layout, 2, 1, 1, 2)
 
         view_layout.addWidget(self.details_group)
+        view_layout.setStretchFactor(self.password_tree, 3)
+        view_layout.setStretchFactor(self.details_group, 1)
 
         view_button_layout = QHBoxLayout()
-        view_password_button = QPushButton("Show/Hide Password")
-        view_password_button.clicked.connect(self.toggle_view_password)
-        view_button_layout.addWidget(view_password_button)
-
-        delete_button = QPushButton("Delete Selected Entry")
+        view_button_layout.addStretch(1)
+        delete_button = QPushButton(QIcon.fromTheme("edit-delete"), " Delete Entry")
+        delete_button.setObjectName("DeleteButton")
+        delete_button.setToolTip("Delete the selected password entry")
         delete_button.clicked.connect(self.delete_selected_entry)
         view_button_layout.addWidget(delete_button)
-
         view_layout.addLayout(view_button_layout)
 
-        self.tabs.addTab(view_tab, "View Entries")
+        self.tabs.addTab(view_tab, QIcon.fromTheme("folder"), "View Entries")
 
         auth_tab = QWidget()
-        auth_tab_layout = QVBoxLayout()
-        auth_tab.setLayout(auth_tab_layout)
-
-        self.authenticator_stack = QStackedWidget()
-        auth_tab_layout.addWidget(self.authenticator_stack)
-
-        view_codes_widget = QWidget()
-        view_codes_layout = QHBoxLayout()
-        view_codes_widget.setLayout(view_codes_layout)
+        auth_tab_layout = QHBoxLayout(auth_tab)
+        auth_tab_layout.setSpacing(10)
 
         view_codes_left_pane = QVBoxLayout()
+        view_codes_left_pane.setSpacing(8)
         view_codes_left_pane.addWidget(QLabel("Authenticator Accounts:"))
         self.totp_account_list = QListWidget()
         self.totp_account_list.itemSelectionChanged.connect(self.display_totp_details)
-        view_codes_left_pane.addWidget(self.totp_account_list)
+        self.totp_account_list.setAlternatingRowColors(True)
+        view_codes_left_pane.addWidget(self.totp_account_list, 1)
 
-        add_new_account_button = QPushButton("Add New Account + ")
-        add_new_account_button.clicked.connect(lambda: self.authenticator_stack.setCurrentIndex(1))
+        add_new_account_button = QPushButton(QIcon.fromTheme("list-add"), " Add Account...")
+        add_new_account_button.setToolTip("Add a new account for TOTP code generation")
+        add_new_account_button.clicked.connect(self.open_add_totp_dialog)
         view_codes_left_pane.addWidget(add_new_account_button)
 
         view_codes_right_pane = QVBoxLayout()
         self.totp_details_group = QGroupBox("Current Code")
-        totp_details_layout = QVBoxLayout()
-        self.totp_details_group.setLayout(totp_details_layout)
-        
+        totp_details_layout = QVBoxLayout(self.totp_details_group)
+        totp_details_layout.setSpacing(8)
         self.totp_details_name_label = QLabel("<i>Select an account</i>")
         self.totp_details_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.totp_details_name_label.setStyleSheet("margin-top: 10px;")
         totp_details_layout.addWidget(self.totp_details_name_label)
-        
+        code_layout = QHBoxLayout()
+        code_layout.addStretch(1)
         self.totp_details_code_label = QLabel("-")
-        self.totp_details_code_label.setStyleSheet("font-size: 28pt; font-weight: bold; margin: 10px;")
+        self.totp_details_code_label.setObjectName("CodeLabel")
         self.totp_details_code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.totp_details_code_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        totp_details_layout.addWidget(self.totp_details_code_label)
-
-        self.totp_details_progressbar = QLabel("") 
-        self.totp_details_progressbar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        totp_details_layout.addWidget(self.totp_details_progressbar)
-
+        self.totp_details_code_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextBrowserInteraction)
+        self.totp_details_code_label.mousePressEvent = self.copy_current_totp_code
+        self.totp_details_code_label.setToolTip("Click code to copy")
+        code_layout.addWidget(self.totp_details_code_label)
+        copy_totp_button = QPushButton(QIcon.fromTheme("edit-copy"), "")
+        copy_totp_button.setToolTip("Copy Code")
+        copy_totp_button.setFixedSize(QSize(32, 32))
+        copy_totp_button.clicked.connect(self.copy_current_totp_code)
+        code_layout.addWidget(copy_totp_button)
+        code_layout.addStretch(1)
+        totp_details_layout.addLayout(code_layout)
+        self.totp_progressbar = QProgressBar()
+        self.totp_progressbar.setRange(0, 300)
+        self.totp_progressbar.setValue(0)
+        self.totp_progressbar.setTextVisible(False)
+        self.totp_progressbar.setFixedHeight(10)
+        totp_details_layout.addWidget(self.totp_progressbar)
+        self.totp_seconds_label = QLabel("")
+        self.totp_seconds_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.totp_seconds_label.setStyleSheet("font-size: 9pt; color: #aaa;")
+        totp_details_layout.addWidget(self.totp_seconds_label)
         totp_details_layout.addStretch(1)
-        delete_totp_button = QPushButton("Delete Selected Account")
+        delete_totp_button = QPushButton(QIcon.fromTheme("edit-delete"), " Delete Account")
+        delete_totp_button.setObjectName("DeleteButton")
+        delete_totp_button.setToolTip("Delete the selected authenticator account")
         delete_totp_button.clicked.connect(self.delete_selected_totp_account)
         totp_details_layout.addWidget(delete_totp_button)
-        
         view_codes_right_pane.addWidget(self.totp_details_group)
         view_codes_right_pane.addStretch()
-
-        view_codes_layout.addLayout(view_codes_left_pane, 2)
-        view_codes_layout.addLayout(view_codes_right_pane, 1)
         
-        self.authenticator_stack.addWidget(view_codes_widget)
+        auth_tab_layout.addLayout(view_codes_left_pane, 1) 
+        auth_tab_layout.addLayout(view_codes_right_pane, 1)
 
-        add_account_widget = QWidget()
-        add_account_layout = QVBoxLayout()
-        add_account_widget.setLayout(add_account_layout)
-
-        add_auth_group = QGroupBox("Add New Authenticator Account")
-        add_auth_form_layout = QGridLayout()
-        add_auth_group.setLayout(add_auth_form_layout)
-        
-        scan_qr_button = QPushButton("Scan QR Code (Recommended)") 
-        scan_qr_button.setStyleSheet("padding: 10px;")
-        scan_qr_button.clicked.connect(self.scan_totp_qr_code)
-        add_auth_form_layout.addWidget(scan_qr_button, 0, 0, 1, 2)
-
-        add_auth_form_layout.addItem(QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 1, 0, 1, 2)
-        add_auth_form_layout.addWidget(QLabel("<i>Or enter manually:</i>"), 2, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        add_auth_form_layout.addWidget(QLabel("Account Name:"), 3, 0)
-        self.totp_account_name_entry = QLineEdit()
-        self.totp_account_name_entry.setPlaceholderText("e.g., Google (myemail@...) / GitHub")
-        add_auth_form_layout.addWidget(self.totp_account_name_entry, 3, 1)
-
-        add_auth_form_layout.addWidget(QLabel("Secret Key (Base32):"), 4, 0)
-        self.totp_secret_key_entry = QLineEdit()
-        self.totp_secret_key_entry.setPlaceholderText("Paste Base32 secret here")
-        add_auth_form_layout.addWidget(self.totp_secret_key_entry, 4, 1)
-
-        manual_add_button = QPushButton("Add Account Manually")
-        manual_add_button.clicked.connect(self.add_totp_account_gui)
-        add_auth_form_layout.addWidget(manual_add_button, 5, 0, 1, 2)
-
-        add_account_layout.addWidget(add_auth_group)
-        add_account_layout.addStretch(1)
-        
-        cancel_add_button = QPushButton("Cancel")
-        cancel_add_button.clicked.connect(lambda: self.authenticator_stack.setCurrentIndex(0))
-        add_account_layout.addWidget(cancel_add_button, alignment=Qt.AlignmentFlag.AlignRight)
-
-        self.authenticator_stack.addWidget(add_account_widget)
-
-        self.authenticator_stack.setCurrentIndex(0)
-
-        self.tabs.addTab(auth_tab, "Authenticator")
+        self.tabs.addTab(auth_tab, QIcon.fromTheme("preferences-system-time"), "Authenticator")
 
     def generate_password(self):
         password = secrets.token_urlsafe(16)
@@ -450,78 +654,80 @@ class PasswordManagerGUI(QMainWindow):
             QMessageBox.warning(self, "Error", "Please fill in Website, Username, and Password fields!")
 
     def display_entry_details(self):
-        self.totp_timer.stop()
         selected_items = self.password_tree.selectedItems()
         if selected_items:
             item = selected_items[0]
-            self.currently_selected_index = self.password_tree.indexOfTopLevelItem(item)
-            entry = self.password_manager.get_password(self.currently_selected_index)
-            
-            self.details_website_label.setText(entry.get('website', '-'))
-            self.details_username_label.setText(entry.get('username', '-'))
-            self.details_password_label.setText("********")
-            self.details_password_label.setProperty("password_hidden", True)
-            self.details_password_label.setProperty("actual_password", entry.get('password', ''))
-            
-            if entry.get("totp_secret"):
-                self.update_selected_totp_display()
-                self.totp_timer.start(1000)
-            else:
-                self.details_totp_code_label.setText("-")
-                self.details_totp_progressbar.setText("")
+            try:
+                 index = self.password_tree.indexOfTopLevelItem(item)
+                 if index < 0 or index >= len(self.password_manager.passwords):
+                     self.clear_entry_details()
+                     return
+                 self.currently_selected_index = index
+                 entry = self.password_manager.get_password(self.currently_selected_index)
+                 
+                 self.details_website_label.setText(entry.get('website', '-'))
+                 self.details_username_label.setText(entry.get('username', '-'))
+                 self.details_password_label.setText("********")
+                 self.details_password_label.setProperty("password_hidden", True)
+                 self.details_password_label.setProperty("actual_password", entry.get('password', ''))
+                 self.toggle_pass_button.setChecked(False)
+                 self.copy_password_button.setEnabled(False)
+                 self.copy_username_button.setEnabled(bool(entry.get('username')))
+            except Exception as e:
+                 print(f"Error displaying entry details: {e}")
+                 self.clear_entry_details()
         else:
-            self.currently_selected_index = -1
-            self.details_website_label.setText("-")
-            self.details_username_label.setText("-")
-            self.details_password_label.setText("-")
-            self.details_password_label.setProperty("password_hidden", True)
-            self.details_password_label.setProperty("actual_password", "")
-            self.details_totp_code_label.setText("-")
-            self.details_totp_progressbar.setText("")
+            self.clear_entry_details()
 
-    def update_selected_totp_display(self):
-         if self.currently_selected_index != -1:
-             code = self.password_manager.generate_totp_code(self.currently_selected_index)
-             if code:
-                self.details_totp_code_label.setText(code)
-                try:
-                    secret = self.password_manager.get_password(self.currently_selected_index).get("totp_secret")
-                    totp = pyotp.TOTP(secret)
-                    remaining = totp.interval - (time.time() % totp.interval)
-                    progress = int((remaining / totp.interval) * 10)
-                    self.details_totp_progressbar.setText(f"[{'#' * progress}{'.' * (10 - progress)}] {int(remaining)}s")
-                except Exception:
-                     self.details_totp_progressbar.setText("[----------]")
-             else:
-                 self.details_totp_code_label.setText("-")
-                 self.details_totp_progressbar.setText("")
-         else:
-             self.totp_timer.stop()
+    def clear_entry_details(self):
+        self.currently_selected_index = -1
+        self.details_website_label.setText("-")
+        self.details_username_label.setText("-")
+        self.details_password_label.setText("-")
+        self.details_password_label.setProperty("password_hidden", True)
+        self.details_password_label.setProperty("actual_password", "")
+        self.toggle_pass_button.setChecked(False)
+        self.copy_password_button.setEnabled(False)
+        self.copy_username_button.setEnabled(False)
 
-    def toggle_view_password(self):
+    def toggle_view_password(self, checked):
         if self.currently_selected_index != -1:
-            is_hidden = self.details_password_label.property("password_hidden")
             actual_password = self.details_password_label.property("actual_password")
-            if is_hidden:
+            if checked:
+                self.details_password_label.setEchoMode(QLineEdit.EchoMode.Normal)
                 self.details_password_label.setText(actual_password)
-                self.details_password_label.setProperty("password_hidden", False)
+                self.toggle_pass_button.setToolTip("Hide Password")
+                self.copy_password_button.setEnabled(bool(actual_password))
             else:
+                self.details_password_label.setEchoMode(QLineEdit.EchoMode.Password)
                 self.details_password_label.setText("********")
-                self.details_password_label.setProperty("password_hidden", True)
+                self.toggle_pass_button.setToolTip("Show Password")
+                self.copy_password_button.setEnabled(False)
         else:
-             QMessageBox.warning(self, "Error", "Please select an entry first!")
+            self.toggle_pass_button.setChecked(False)
+            self.copy_password_button.setEnabled(False)
 
     def delete_selected_entry(self):
         if self.currently_selected_index != -1:
-            reply = QMessageBox.question(self, 'Confirm Delete', 
-                                       f"Are you sure you want to delete the entry for '{self.details_website_label.text()}'?",
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
-                                       QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
-                self.password_manager.delete_password(self.currently_selected_index)
-                self.refresh_password_list()
-                self.display_entry_details()
-                QMessageBox.information(self, "Success", "Entry deleted successfully!")
+            if self.currently_selected_index < len(self.password_manager.passwords):
+                 entry_name = self.password_manager.get_password(self.currently_selected_index).get('website', 'this entry')
+                 reply = QMessageBox.question(self, 'Confirm Delete', 
+                                            f"Are you sure you want to delete the password entry for '{entry_name}'?",
+                                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                            QMessageBox.StandardButton.No)
+                 if reply == QMessageBox.StandardButton.Yes:
+                     try:
+                         self.password_manager.delete_password(self.currently_selected_index)
+                         self.refresh_password_list()
+                         self.clear_entry_details()
+                         QMessageBox.information(self, "Success", "Entry deleted successfully!")
+                     except IndexError:
+                          QMessageBox.warning(self, "Error", "Could not delete entry. Index out of range.")
+                     except Exception as e:
+                          QMessageBox.critical(self, "Error", f"Could not delete entry: {e}")
+            else:
+                 QMessageBox.warning(self, "Error", "Selection is invalid. Please re-select.")
+                 self.clear_entry_details()
         else:
             QMessageBox.warning(self, "Error", "Please select an entry to delete!")
 
@@ -531,181 +737,148 @@ class PasswordManagerGUI(QMainWindow):
             item = QTreeWidgetItem([password["website"], password["username"]])
             self.password_tree.addTopLevelItem(item)
 
-    def add_totp_account_gui(self):
-        name = self.totp_account_name_entry.text().strip()
-        secret = self.totp_secret_key_entry.text().strip()
-        
-        if not name or not secret:
-             QMessageBox.warning(self, "Input Error", "Please enter both an account name and the secret key.")
-             return
-             
-        try:
-             self.password_manager.add_totp_account(name, secret)
-             QMessageBox.information(self, "Success", f"Authenticator account '{name}' added successfully!")
-             self.totp_account_name_entry.clear()
-             self.totp_secret_key_entry.clear()
-             self.refresh_totp_list()
-             self.authenticator_stack.setCurrentIndex(0)
-        except ValueError as e:
-             QMessageBox.critical(self, "Error", f"Failed to add account: {e}")
-        except Exception as e:
-             QMessageBox.critical(self, "Error", f"An unexpected error occurred: {e}")
-             
-    def refresh_totp_list(self):
-         selected_row = self.totp_account_list.currentRow()
-         self.totp_account_list.clear()
-         accounts = self.password_manager.get_all_totp_accounts()
-         for account in accounts:
-              self.totp_account_list.addItem(QListWidgetItem(account["name"]))
-         if 0 <= selected_row < self.totp_account_list.count():
-             self.totp_account_list.setCurrentRow(selected_row)
-         else:
-              self.display_totp_details()
-              
+    def open_add_totp_dialog(self):
+        dialog = AddTotpAccountDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+             details = dialog.get_new_account_details()
+             if details:
+                  try:
+                       self.password_manager.add_totp_account(details["name"], details["secret"])
+                       QMessageBox.information(self, "Success", f"Authenticator account '{details['name']}' added successfully!")
+                       self.refresh_totp_list()
+                  except ValueError as e:
+                       QMessageBox.critical(self, "Error", f"Failed to add account: {e}")
+                  except Exception as e:
+                       QMessageBox.critical(self, "Error", f"An unexpected error occurred: {e}")
+        # No action needed if dialog is cancelled (Rejected)
+
     def display_totp_details(self):
          self.totp_timer.stop()
          selected_items = self.totp_account_list.selectedItems()
          if selected_items:
-              self.currently_selected_totp_index = self.totp_account_list.currentRow()
-              account = self.password_manager.get_totp_account(self.currently_selected_totp_index)
-              self.totp_details_name_label.setText(f"<b>{account.get('name', '-')}</b>")
-              self.update_authenticator_display()
-              self.totp_timer.start(1000)
+              try:
+                  self.currently_selected_totp_index = self.totp_account_list.currentRow()
+                  if self.currently_selected_totp_index < 0 or self.currently_selected_totp_index >= len(self.password_manager.totp_accounts):
+                      self.clear_totp_details()
+                      return
+                      
+                  account = self.password_manager.get_totp_account(self.currently_selected_totp_index)
+                  self.totp_details_name_label.setText(f"<b>{account.get('name', '-')}</b>")
+                  self.update_authenticator_display()
+                  self.totp_timer.start(500)
+              except Exception as e:
+                   print(f"Error displaying TOTP details: {e}")
+                   self.clear_totp_details()
          else:
-              self.currently_selected_totp_index = -1
-              self.totp_details_name_label.setText("<i>Select an account</i>")
-              self.totp_details_code_label.setText("-")
-              self.totp_details_progressbar.setText("")
+             self.clear_totp_details()
+
+    def clear_totp_details(self):
+        self.currently_selected_totp_index = -1
+        self.totp_details_name_label.setText("<i>Select an account</i>")
+        self.totp_details_code_label.setText("-")
+        self.totp_progressbar.setValue(0)
+        self.totp_seconds_label.setText("")
+        self.totp_timer.stop()
               
     def update_authenticator_display(self):
          if self.currently_selected_totp_index != -1:
-             code = self.password_manager.generate_totp_code(self.currently_selected_totp_index)
-             if code:
-                 self.totp_details_code_label.setText(code)
-                 try:
+             try:
+                 if self.currently_selected_totp_index >= len(self.password_manager.totp_accounts):
+                      self.clear_totp_details()
+                      return
+                 code = self.password_manager.generate_totp_code(self.currently_selected_totp_index)
+                 if code and code != "Error":
+                     self.totp_details_code_label.setText(code)
                      secret = self.password_manager.get_totp_account(self.currently_selected_totp_index).get("secret")
+                     if not secret:
+                          raise ValueError("Secret not found for TOTP update")
                      totp = pyotp.TOTP(secret)
-                     remaining = totp.interval - (time.time() % totp.interval)
-                     progress = int((remaining / totp.interval) * 10)
-                     self.totp_details_progressbar.setText(f"[{'#' * progress}{'.' * (10 - progress)}] {int(remaining)}s")
-                 except Exception:
-                     self.totp_details_progressbar.setText("[----------]")
-             else:
-                 self.totp_details_code_label.setText("Error")
-                 self.totp_details_progressbar.setText("")
+                     remaining_float = totp.interval - (time.time() % totp.interval)
+                     remaining_int = int(remaining_float)
+                     progress_value = int(remaining_float * 10)
+                     self.totp_progressbar.setValue(progress_value) 
+                     self.totp_seconds_label.setText(f"{remaining_int}s remaining")
+                     is_expiring = remaining_int < 5
+                     self.totp_details_code_label.setProperty("expiring", is_expiring)
+                     self.totp_details_code_label.style().unpolish(self.totp_details_code_label)
+                     self.totp_details_code_label.style().polish(self.totp_details_code_label)
+                 elif code == "Error":
+                     self.totp_details_code_label.setText("Error") 
+                     self.totp_progressbar.setValue(0)
+                     self.totp_seconds_label.setText("Error generating code")
+                 else:
+                      self.clear_totp_details()
+             except IndexError:
+                  print("IndexError during TOTP update, clearing details.")
+                  self.clear_totp_details()
+             except Exception as e:
+                  print(f"Error in update_authenticator_display: {e}")
+                  self.totp_details_code_label.setText("Error") 
+                  self.totp_progressbar.setValue(0)
+                  self.totp_seconds_label.setText("Update Error")
+                  self.totp_timer.stop()
          else:
-             self.totp_timer.stop()
-             self.display_totp_details()
+             self.clear_totp_details()
+
+    def copy_current_totp_code(self, event=None):
+        code = self.totp_details_code_label.text()
+        if code and code != "-" and code != "Error":
+             self.copy_to_clipboard(code)
 
     def delete_selected_totp_account(self):
-         if self.currently_selected_totp_index != -1:
-             account = self.password_manager.get_totp_account(self.currently_selected_totp_index)
-             reply = QMessageBox.question(self, 'Confirm Delete', 
-                                        f"Are you sure you want to delete the authenticator account for '{account.get('name')}'?",
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
-                                        QMessageBox.StandardButton.No)
-             if reply == QMessageBox.StandardButton.Yes:
-                 self.password_manager.delete_totp_account(self.currently_selected_totp_index)
-                 self.refresh_totp_list()
-                 QMessageBox.information(self, "Success", "Authenticator account deleted successfully!")
-         else:
-             QMessageBox.warning(self, "Error", "Please select an authenticator account to delete!")
-
-    def scan_totp_qr_code(self):
-        cap = cv2.VideoCapture(0)
-        
-        if not cap.isOpened():
-            QMessageBox.critical(self, "Camera Error", "Could not open webcam.")
-            return
-
-        scanned_data = None
-        scan_window_name = "Scan TOTP QR Code - Press 'Q' to Quit"
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                QMessageBox.warning(self, "Camera Error", "Failed to capture frame from webcam.")
-                break
-
-            qrcodes = pyzbar.decode(frame)
-            found = False
-            for qr in qrcodes:
-                qr_data = qr.data.decode('utf-8')
-                
-                if qr_data.startswith('otpauth://totp/'):
-                    scanned_data = qr_data
-                    found = True
-                    (x, y, w, h) = qr.rect
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    cv2.putText(frame, "OTP QR Found! Press Q", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    break
-            
-            cv2.imshow(scan_window_name, frame)
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q') or found:
-                break
-                
-        cap.release()
-        cv2.destroyWindow(scan_window_name)
-        cv2.waitKey(1)
-        cv2.waitKey(1)
-        cv2.waitKey(1)
-        cv2.waitKey(1)
-
-        if scanned_data:
-            self.parse_otpauth_uri(scanned_data)
+        if self.currently_selected_totp_index != -1:
+            if self.currently_selected_totp_index < len(self.password_manager.totp_accounts):
+                account = self.password_manager.get_totp_account(self.currently_selected_totp_index)
+                reply = QMessageBox.question(self, 'Confirm Delete', 
+                                           f"Are you sure you want to delete the authenticator account for '{account.get('name')}'?",
+                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                           QMessageBox.StandardButton.No)
+                if reply == QMessageBox.StandardButton.Yes:
+                    try:
+                        self.password_manager.delete_totp_account(self.currently_selected_totp_index)
+                        self.refresh_totp_list()
+                        QMessageBox.information(self, "Success", "Authenticator account deleted successfully!")
+                    except IndexError:
+                         QMessageBox.warning(self, "Error", "Could not delete account. Index out of range.")
+                    except Exception as e:
+                         QMessageBox.critical(self, "Error", f"Could not delete account: {e}")
+            else:
+                 QMessageBox.warning(self, "Error", "Selection is invalid. Please re-select.")
+                 self.clear_totp_details()
         else:
-            QMessageBox.information(self, "Scan Cancelled", "QR code scanning cancelled or no valid code found.")
-            
-    def parse_otpauth_uri(self, uri):
-        try:
-            parsed_uri = urllib.parse.urlparse(uri)
-            params = urllib.parse.parse_qs(parsed_uri.query)
-            
-            secret = params.get('secret', [None])[0]
-            if not secret:
-                raise ValueError("Secret parameter not found in URI")
+            QMessageBox.warning(self, "Error", "Please select an authenticator account to delete!")
 
-            path_parts = parsed_uri.path.strip('/').split(':', 1)
-            account_label = urllib.parse.unquote(path_parts[-1]) # Decode URL encoding
-            issuer = params.get('issuer', [None])[0]
-            if issuer:
-                 issuer = urllib.parse.unquote(issuer) # Decode issuer
-            
-            suggested_name = account_label
-            if issuer and issuer.lower() not in account_label.lower(): # Case-insensitive check
-                 suggested_name = f"{issuer} ({account_label})"
-                 
-            # --- Auto-add the account --- 
-            try:
-                 self.password_manager.add_totp_account(suggested_name, secret)
-                 QMessageBox.information(self, "Scan Successful", f"Account '{suggested_name}' added successfully!")
-                 self.refresh_totp_list()
-                 # Switch back to the code view after successful add
-                 self.authenticator_stack.setCurrentIndex(0) 
-                 # Clear fields for next time (optional, but good practice)
-                 self.totp_account_name_entry.clear()
-                 self.totp_secret_key_entry.clear()
-            except ValueError as e:
-                 # Handle errors during add (e.g., duplicate name)
-                 QMessageBox.critical(self, "Add Account Error", f"Could not add scanned account: {e}")
-                 # Keep fields populated to allow user to fix name and add manually
-                 self.totp_account_name_entry.setText(suggested_name)
-                 self.totp_secret_key_entry.setText(secret)
-            except Exception as e:
-                 QMessageBox.critical(self, "Add Account Error", f"An unexpected error occurred while adding the account: {e}")
-                 self.totp_account_name_entry.clear()
-                 self.totp_secret_key_entry.clear()
-            # --- End Auto-add ---
-            
+    def copy_to_clipboard(self, text):
+        if not text:
+            return
+        try:
+            pyperclip.copy(text)
+            self.statusBar().showMessage("Copied to clipboard!", 1500) 
         except Exception as e:
-            QMessageBox.critical(self, "URI Parse Error", f"Could not parse the scanned QR code URI: {e}\nURI: {uri}")
-            # Clear fields on parse error
-            self.totp_secret_key_entry.setText("")
-            self.totp_account_name_entry.setText("")
+            print(f"Clipboard error: {e}")
+            QMessageBox.warning(self, "Clipboard Error", f"Could not copy to clipboard: {e}")
+            self.statusBar().showMessage("Clipboard error.", 1500)
+
+    def load_settings(self):
+        settings = QSettings(ORG_NAME, APP_NAME)
+        geometry = settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        else:
+            self.resize(800, 600) 
+            screen_geometry = QApplication.primaryScreen().availableGeometry()
+            self.move(screen_geometry.center() - self.frameGeometry().center())
+
+    def save_settings(self):
+        settings = QSettings(ORG_NAME, APP_NAME)
+        settings.setValue("geometry", self.saveGeometry())
+
+    def closeEvent(self, event):
+        self.save_settings()
+        super().closeEvent(event)
 
     def run(self):
+        self.statusBar().showMessage("Ready")
         master_password, ok = QInputDialog.getText(self, "Master Password", "Enter your master password:", QLineEdit.EchoMode.Password)
         if ok and master_password:
             if self.password_manager.verify_master_password(master_password):
@@ -718,8 +891,21 @@ class PasswordManagerGUI(QMainWindow):
              QMessageBox.warning(self, "Cancelled", "Master password entry cancelled.")
              sys.exit()
 
+    def refresh_totp_list(self):
+        current_row = self.totp_account_list.currentRow()
+        self.totp_account_list.clear()
+        accounts = self.password_manager.get_all_totp_accounts()
+        for account in accounts:
+            self.totp_account_list.addItem(QListWidgetItem(account["name"]))
+        # Try to restore selection if valid
+        if 0 <= current_row < self.totp_account_list.count():
+            self.totp_account_list.setCurrentRow(current_row)
+        else:
+             # If selection lost or invalid, clear details
+             self.clear_totp_details()
+    
+
 if __name__ == "__main__":
-    # Environment variable is set before QApplication is created
     app = QApplication(sys.argv)
     ModernStyle.set_style(app)
     password_manager_gui = PasswordManagerGUI()
