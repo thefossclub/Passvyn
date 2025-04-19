@@ -584,41 +584,72 @@ class PasswordManagerGUI(QMainWindow):
         # Add button to the corner, aligned right
         self.tabs.setCornerWidget(self.menu_button, Qt.Corner.TopRightCorner)
         
-        # --- Add Entry Tab --- 
+        # --- Add Entry Tab --- (Redesigned Layout)
         add_tab = QWidget()
-        add_layout = QVBoxLayout(add_tab)
-        add_layout.setSpacing(15)
+        # Overall layout for the tab, allowing centering
+        add_tab_outer_layout = QHBoxLayout(add_tab)
+        add_tab_outer_layout.addStretch(1) # Spacer left
 
-        add_form_layout = QGridLayout()
-        add_form_layout.setSpacing(12)
-        add_form_layout.addWidget(QLabel("Website:"), 0, 0)
+        # Vertical layout for the form elements (will be centered)
+        add_tab_inner_layout = QVBoxLayout()
+        add_tab_inner_layout.setSpacing(15)
+        add_tab_inner_layout.setContentsMargins(0, 20, 0, 0) # Add top margin
+        # Constrain the width of the inner form area
+        add_tab_inner_layout.setSizeConstraint(QLayout.SizeConstraint.SetMaximumSize)
+        form_widget = QWidget() # Widget to hold the inner layout and constraints
+        form_widget.setLayout(add_tab_inner_layout)
+        form_widget.setMaximumWidth(450) # Max width for the form
+        
+        # Input fields using QGridLayout for label alignment
+        add_form_grid = QGridLayout()
+        add_form_grid.setSpacing(10)
+        add_form_grid.setColumnStretch(1, 1) # Allow input fields to stretch within max width
+        
+        add_form_grid.addWidget(QLabel("Website:"), 0, 0, Qt.AlignmentFlag.AlignRight)
         self.website_entry = QLineEdit()
-        add_form_layout.addWidget(self.website_entry, 0, 1)
+        add_form_grid.addWidget(self.website_entry, 0, 1)
 
-        add_form_layout.addWidget(QLabel("Username:"), 1, 0)
+        add_form_grid.addWidget(QLabel("Username:"), 1, 0, Qt.AlignmentFlag.AlignRight)
         self.username_entry = QLineEdit()
-        add_form_layout.addWidget(self.username_entry, 1, 1)
+        add_form_grid.addWidget(self.username_entry, 1, 1)
 
-        add_form_layout.addWidget(QLabel("Password:"), 2, 0)
+        add_form_grid.addWidget(QLabel("Password:"), 2, 0, Qt.AlignmentFlag.AlignRight)
+        # Layout to hold password field and generate button
+        password_hbox = QHBoxLayout()
+        password_hbox.setSpacing(5)
+        password_hbox.setContentsMargins(0,0,0,0)
         self.password_entry = QLineEdit()
         self.password_entry.setEchoMode(QLineEdit.EchoMode.Password)
-        add_form_layout.addWidget(self.password_entry, 2, 1)
-        add_layout.addLayout(add_form_layout)
-
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-        button_layout.addStretch(1)
-        generate_button = QPushButton(QIcon(ICON_GENERATE), " Generate Password")
+        password_hbox.addWidget(self.password_entry, 1) # Field takes stretch
+        # Smaller Generate button next to password field
+        generate_button = QPushButton(QIcon(ICON_GENERATE), "")
+        generate_button.setProperty("icon-button", True)
         generate_button.setToolTip("Generate a strong random password")
         generate_button.clicked.connect(self.generate_password)
-        button_layout.addWidget(generate_button)
-        add_button = QPushButton(QIcon(ICON_ADD), " Add Entry")
-        add_button.setProperty("primary", True)
+        password_hbox.addWidget(generate_button)
+        add_form_grid.addLayout(password_hbox, 2, 1)
+        
+        add_tab_inner_layout.addLayout(add_form_grid)
+        add_tab_inner_layout.addSpacing(20) # Space before Add button
+
+        # Centered Add Button
+        add_button_layout = QHBoxLayout()
+        add_button_layout.addStretch(1)
+        add_button = QPushButton(QIcon(ICON_ADD), " Add Entry") 
+        add_button.setProperty("primary", True) # Use primary style
+        add_button.setMinimumWidth(150) # Make it reasonably wide
         add_button.setToolTip("Save this password entry")
         add_button.clicked.connect(self.add_entry)
-        button_layout.addWidget(add_button)
-        add_layout.addLayout(button_layout)
-        add_layout.addStretch(1)
+        add_button_layout.addWidget(add_button)
+        add_button_layout.addStretch(1)
+        add_tab_inner_layout.addLayout(add_button_layout)
+
+        add_tab_inner_layout.addStretch(1) # Push form elements up
+
+        # Add the constrained inner layout to the centering outer layout
+        add_tab_outer_layout.addWidget(form_widget)
+        add_tab_outer_layout.addStretch(1) # Spacer right
+
         self.tabs.addTab(add_tab, QIcon(ICON_TAB_ADD), "Add Entry")
 
         # --- View Entries Tab --- 
