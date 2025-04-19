@@ -10,8 +10,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QWidget, QVB
                              QListWidget, QListWidgetItem, QGroupBox, QGridLayout, 
                              QStackedWidget, QSpacerItem, QSizePolicy, 
                              QProgressBar, QMenu, 
-                             QDialog, QDialogButtonBox)
-from PyQt6.QtCore import Qt, QTimer, QSettings, QSize
+                             QDialog, QDialogButtonBox, QFileDialog)
+from PyQt6.QtCore import Qt, QTimer, QSettings, QSize, QPoint
 from PyQt6.QtGui import QPalette, QColor, QAction, QIcon
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -24,6 +24,7 @@ import cv2
 from pyzbar import pyzbar
 import urllib.parse
 import pyperclip
+import shutil
 
 # App details for QSettings
 ORG_NAME = "V8V88V8V88"
@@ -44,149 +45,150 @@ ICON_TAB_ADD = os.path.join(ICON_DIR, "file-plus.svg")
 ICON_TAB_VIEW = os.path.join(ICON_DIR, "list.svg")
 ICON_TAB_AUTH = os.path.join(ICON_DIR, "shield.svg")
 ICON_LOCK = os.path.join(ICON_DIR, "lock.svg")
+# New Menu Icons
+ICON_MENU = os.path.join(ICON_DIR, "menu.svg")
+ICON_ABOUT = os.path.join(ICON_DIR, "info.svg")
+ICON_BACKUP = os.path.join(ICON_DIR, "download.svg")
+ICON_RESTORE = os.path.join(ICON_DIR, "upload.svg")
+ICON_SETTINGS = os.path.join(ICON_DIR, "settings.svg")
 
 class ModernStyle:
+    # Define colors as class attributes
+    COLOR_WINDOW_BG = QColor("#1e1e1e")      
+    COLOR_BASE_BG = QColor("#2a2a2a")        
+    COLOR_ALT_BASE_BG = QColor("#333333")  
+    COLOR_BUTTON_BG = QColor("#3a3a3a")      
+    COLOR_HIGHLIGHT = QColor("#0A84FF")      
+    COLOR_HIGHLIGHT_TEXT = Qt.GlobalColor.white # This one is an enum, used differently
+    COLOR_TEXT = QColor("#e0e0e0")           
+    COLOR_TEXT_DIM = QColor("#a0a0a0")       
+    COLOR_BORDER = QColor("#484848")         
+    
     @staticmethod
     def set_style(app):
         app.setStyle(QStyleFactory.create("Fusion"))
         palette = QPalette()
-        # Very Dark macOS inspired Palette
-        COLOR_WINDOW_BG = QColor("#1e1e1e")      # Near black
-        COLOR_BASE_BG = QColor("#2a2a2a")        # Input field, list bg
-        COLOR_ALT_BASE_BG = QColor("#333333")  # Alternate list row, group box
-        COLOR_BUTTON_BG = QColor("#3a3a3a")      # Button bg
-        COLOR_HIGHLIGHT = QColor("#0A84FF")      # macOS Blue
-        COLOR_HIGHLIGHT_TEXT = Qt.GlobalColor.white
-        COLOR_TEXT = QColor("#e0e0e0")           # Light gray text
-        COLOR_TEXT_DIM = QColor("#a0a0a0")       # Dimmer text
-        COLOR_BORDER = QColor("#484848")         # Subtle borders
-
-        palette.setColor(QPalette.ColorRole.Window, COLOR_WINDOW_BG)
-        palette.setColor(QPalette.ColorRole.WindowText, COLOR_TEXT)
-        palette.setColor(QPalette.ColorRole.Base, COLOR_BASE_BG)
-        palette.setColor(QPalette.ColorRole.AlternateBase, COLOR_ALT_BASE_BG)
+        palette.setColor(QPalette.ColorRole.Window, ModernStyle.COLOR_WINDOW_BG)
+        palette.setColor(QPalette.ColorRole.WindowText, ModernStyle.COLOR_TEXT)
+        palette.setColor(QPalette.ColorRole.Base, ModernStyle.COLOR_BASE_BG)
+        palette.setColor(QPalette.ColorRole.AlternateBase, ModernStyle.COLOR_ALT_BASE_BG)
         palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
         palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
-        palette.setColor(QPalette.ColorRole.Text, COLOR_TEXT)
-        palette.setColor(QPalette.ColorRole.Button, COLOR_BUTTON_BG)
-        palette.setColor(QPalette.ColorRole.ButtonText, COLOR_TEXT)
+        palette.setColor(QPalette.ColorRole.Text, ModernStyle.COLOR_TEXT)
+        palette.setColor(QPalette.ColorRole.Button, ModernStyle.COLOR_BUTTON_BG)
+        palette.setColor(QPalette.ColorRole.ButtonText, ModernStyle.COLOR_TEXT)
         palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        palette.setColor(QPalette.ColorRole.Link, COLOR_HIGHLIGHT)
-        palette.setColor(QPalette.ColorRole.Highlight, COLOR_HIGHLIGHT)
-        palette.setColor(QPalette.ColorRole.HighlightedText, COLOR_HIGHLIGHT_TEXT)
+        palette.setColor(QPalette.ColorRole.Link, ModernStyle.COLOR_HIGHLIGHT)
+        palette.setColor(QPalette.ColorRole.Highlight, ModernStyle.COLOR_HIGHLIGHT)
+        # Use the enum directly for HighlightedText
+        palette.setColor(QPalette.ColorRole.HighlightedText, ModernStyle.COLOR_HIGHLIGHT_TEXT)
         app.setPalette(palette)
         
-        # Enhanced Stylesheet for Dark macOS Look
+        # Enhanced Stylesheet - Use class attributes directly
         app.setStyleSheet(f"""
             QWidget {{ 
-                /* font-size: 10pt; */ /* REMOVED - Use system default */
-                color: {COLOR_TEXT.name()};
+                /* font-size: 10pt; */ 
+                color: {ModernStyle.COLOR_TEXT.name()};
             }}
             QMainWindow, QDialog {{ 
-                 background-color: {COLOR_WINDOW_BG.name()}; 
+                 background-color: {ModernStyle.COLOR_WINDOW_BG.name()}; 
             }}
             QTabWidget::pane {{ 
-                border: 1px solid {COLOR_BORDER.name()}; 
-                border-top: none; /* Pane border only on sides/bottom */
-                border-radius: 0px; /* Sharp corners for pane */
+                border: 1px solid {ModernStyle.COLOR_BORDER.name()}; 
+                border-top: none; 
+                border-radius: 0px; 
                 border-bottom-left-radius: 6px;
                 border-bottom-right-radius: 6px;
                 padding: 18px;
-                background-color: {COLOR_BASE_BG.name()}; 
+                background-color: {ModernStyle.COLOR_BASE_BG.name()}; 
             }}
             QTabBar::tab {{
-                background-color: {COLOR_BUTTON_BG.name()};
-                color: {COLOR_TEXT_DIM.name()}; 
+                background-color: {ModernStyle.COLOR_BUTTON_BG.name()};
+                color: {ModernStyle.COLOR_TEXT_DIM.name()}; 
                 padding: 10px 25px;
-                border-top-left-radius: 6px; /* Slightly rounder tabs */
+                border-top-left-radius: 6px; 
                 border-top-right-radius: 6px;
-                border: 1px solid {COLOR_BORDER.name()};
+                border: 1px solid {ModernStyle.COLOR_BORDER.name()};
                 border-bottom: none; 
                 margin-right: 1px;
             }}
             QTabBar::tab:selected {{
-                background-color: {COLOR_BASE_BG.name()}; /* Match pane */
-                color: {COLOR_TEXT.name()};
+                background-color: {ModernStyle.COLOR_BASE_BG.name()}; 
+                color: {ModernStyle.COLOR_TEXT.name()};
                 font-weight: bold;
-                /* Make selected tab merge with pane */
                 margin-bottom: -1px; 
             }}
             QTabBar::tab:hover {{
-                background-color: {COLOR_ALT_BASE_BG.name()};
+                background-color: {ModernStyle.COLOR_ALT_BASE_BG.name()};
                 color: white;
             }}
-            /* Primary action button style */
             QPushButton#PrimaryButton, QPushButton[primary="true"] {{
-                background-color: {COLOR_HIGHLIGHT.name()};
+                background-color: {ModernStyle.COLOR_HIGHLIGHT.name()};
                 color: white;
                 font-weight: bold;
             }}
             QPushButton#PrimaryButton:hover, QPushButton[primary="true"]:hover {{
-                background-color: {COLOR_HIGHLIGHT.lighter(120).name()};
+                background-color: {ModernStyle.COLOR_HIGHLIGHT.lighter(120).name()};
             }}
             QPushButton#PrimaryButton:pressed, QPushButton[primary="true"]:pressed {{
-                background-color: {COLOR_HIGHLIGHT.darker(120).name()};
+                background-color: {ModernStyle.COLOR_HIGHLIGHT.darker(120).name()};
             }}
-            /* Standard button style */
             QPushButton {{
-                background-color: {COLOR_BUTTON_BG.name()};
-                color: {COLOR_TEXT.name()};
-                border: 1px solid {COLOR_BORDER.name()};
+                background-color: {ModernStyle.COLOR_BUTTON_BG.name()};
+                color: {ModernStyle.COLOR_TEXT.name()};
+                border: 1px solid {ModernStyle.COLOR_BORDER.name()};
                 padding: 8px 15px; 
                 border-radius: 5px;
                 min-height: 20px;
             }}
             QPushButton:hover {{
-                background-color: {COLOR_ALT_BASE_BG.name()};
-                border-color: {COLOR_TEXT_DIM.name()};
+                background-color: {ModernStyle.COLOR_ALT_BASE_BG.name()};
+                border-color: {ModernStyle.COLOR_TEXT_DIM.name()};
             }}
             QPushButton:pressed {{
-                background-color: {COLOR_BASE_BG.name()};
+                background-color: {ModernStyle.COLOR_BASE_BG.name()};
             }}
-            /* Destructive action button style */
             QPushButton#DeleteButton {{
-                 background-color: {COLOR_BUTTON_BG.name()};
-                 color: #f77; /* Light red text */
+                 background-color: {ModernStyle.COLOR_BUTTON_BG.name()};
+                 color: #f77; 
                  border: 1px solid #733;
             }}
             QPushButton#DeleteButton:hover {{ background-color: #533; border-color: #944; }}
             QPushButton#DeleteButton:pressed {{ background-color: #422; }}
-            /* Scan button style */
              QPushButton#ScanButton {{
-                 background-color: #28a745; /* Green */
+                 background-color: #28a745; 
                  color: white;
                  border: none;
                  font-weight: bold;
             }}
             QPushButton#ScanButton:hover {{ background-color: #2fbf50; }}
             QPushButton#ScanButton:pressed {{ background-color: #1e8735; }}
-            /* Icon-only button styling */
              QPushButton[icon-button="true"] {{
                  background-color: transparent;
                  border: none;
                  padding: 4px;
                  border-radius: 4px;
-                 min-width: 28px; /* Ensure space for icon */
+                 min-width: 28px; 
                  max-width: 28px;
                  min-height: 28px;
                  max-height: 28px;
              }}
              QPushButton[icon-button="true"]:hover {{
-                 background-color: {COLOR_ALT_BASE_BG.name()};
+                 background-color: {ModernStyle.COLOR_ALT_BASE_BG.name()};
              }}
              QPushButton[icon-button="true"]:pressed {{
-                 background-color: {COLOR_BASE_BG.name()};
+                 background-color: {ModernStyle.COLOR_BASE_BG.name()};
              }}
             QLineEdit {{
                 padding: 9px;
-                border: 1px solid {COLOR_BORDER.name()};
+                border: 1px solid {ModernStyle.COLOR_BORDER.name()};
                 border-radius: 5px;
-                background-color: {COLOR_WINDOW_BG.name()}; /* Match window bg */
-                color: {COLOR_TEXT.name()};
+                background-color: {ModernStyle.COLOR_WINDOW_BG.name()}; 
+                color: {ModernStyle.COLOR_TEXT.name()};
             }}
             QGroupBox {{
-                 background-color: {COLOR_ALT_BASE_BG.name()};
-                 border: 1px solid {COLOR_BORDER.name()};
+                 background-color: {ModernStyle.COLOR_ALT_BASE_BG.name()};
+                 border: 1px solid {ModernStyle.COLOR_BORDER.name()};
                  border-radius: 6px;
                  margin-top: 1ex;
                  padding: 18px;
@@ -197,56 +199,56 @@ class ModernStyle:
                  subcontrol-position: top left; 
                  padding: 4px 10px;
                  left: 15px; 
-                 color: {COLOR_TEXT.name()};
-                 background-color: transparent; /* Title blends more */
+                 color: {ModernStyle.COLOR_TEXT.name()};
+                 background-color: transparent; 
                  font-weight: bold;
                  border: none;
             }}
             QTreeWidget, QListWidget {{
-                border: 1px solid {COLOR_BORDER.name()};
+                border: 1px solid {ModernStyle.COLOR_BORDER.name()};
                 border-radius: 5px;
-                background-color: {COLOR_BASE_BG.name()};
+                background-color: {ModernStyle.COLOR_BASE_BG.name()};
                 padding: 5px;
-                alternate-background-color: {COLOR_ALT_BASE_BG.darker(110).name()}; 
+                alternate-background-color: {ModernStyle.COLOR_ALT_BASE_BG.darker(110).name()}; 
             }}
             QTreeWidget::item, QListWidget::item {{
                  padding: 6px; 
                  border-radius: 4px; 
-                 color: {COLOR_TEXT_DIM.name()};
+                 color: {ModernStyle.COLOR_TEXT_DIM.name()};
             }}
             QTreeWidget::item:selected, QListWidget::item:selected {{
-                 background-color: {COLOR_HIGHLIGHT.name()}; 
-                 color: white;
+                 background-color: {ModernStyle.COLOR_HIGHLIGHT.name()}; 
+                 color: white; 
             }}
             QLabel {{
                  background-color: transparent; 
                  padding: 2px; 
-                 color: {COLOR_TEXT_DIM.name()}; 
+                 color: {ModernStyle.COLOR_TEXT_DIM.name()}; 
             }}
             QLabel#CodeLabel {{
-                 color: {COLOR_TEXT.name()}; /* White code */
-                 font-size: 30pt; /* Slightly larger */
+                 color: {ModernStyle.COLOR_TEXT.name()}; 
+                 font-size: 30pt; 
                  font-weight: bold; 
-                 margin-right: 5px; /* Reduced margin */
+                 margin-right: 5px; 
             }}
             QLabel#CodeLabel[expiring="true"] {{ 
-                 color: #f39c12; /* Orange */
+                 color: #f39c12; 
             }}
             QProgressBar {{
-                 border: none; /* Remove border */
+                 border: none; 
                  border-radius: 5px;
                  text-align: center;
-                 background-color: {COLOR_BASE_BG.name()};
-                 height: 6px; /* Slimmer */
+                 background-color: {ModernStyle.COLOR_BASE_BG.name()};
+                 height: 6px; 
             }}
             QProgressBar::chunk {{
-                 background-color: {COLOR_HIGHLIGHT.name()}; 
+                 background-color: {ModernStyle.COLOR_HIGHLIGHT.name()}; 
                  border-radius: 3px;
             }}
             QStatusBar {{ 
-                background-color: {COLOR_WINDOW_BG.name()};
-                border-top: 1px solid {COLOR_BORDER.name()};
-                color: {COLOR_TEXT_DIM.name()};
+                background-color: {ModernStyle.COLOR_WINDOW_BG.name()};
+                border-top: 1px solid {ModernStyle.COLOR_BORDER.name()};
+                color: {ModernStyle.COLOR_TEXT_DIM.name()};
                 font-size: 9pt;
              }}
             QStatusBar::item {{ border: none; }}
@@ -558,15 +560,31 @@ class PasswordManagerGUI(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Passvyn - Secured Password Manager")
+        self.status_bar = self.statusBar()
+        self.status_bar.showMessage("Ready") 
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
-        main_layout = QVBoxLayout(main_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_v_layout = QVBoxLayout(main_widget)
+        main_v_layout.setContentsMargins(10, 10, 10, 10) # Add margins back to main layout
+        main_v_layout.setSpacing(10)
 
+        # --- Tab Widget --- 
         self.tabs = QTabWidget()
-        main_layout.addWidget(self.tabs)
+        main_v_layout.addWidget(self.tabs)
 
+        # --- Create and Add Menu Button to Tab Bar Corner --- 
+        self.menu_button = QPushButton(QIcon(ICON_MENU), "")
+        self.menu_button.setProperty("icon-button", True) # Use icon-button style
+        self.menu_button.setToolTip("Menu")
+        # Make button flat/transparent background to blend with tab bar corner
+        self.menu_button.setFlat(True) 
+        self.menu_button.setStyleSheet("QPushButton { border: none; padding: 5px; } QPushButton:hover { background-color: #555; }") # Minimal style
+        self.menu_button.clicked.connect(self.show_main_menu)
+        # Add button to the corner, aligned right
+        self.tabs.setCornerWidget(self.menu_button, Qt.Corner.TopRightCorner)
+        
+        # --- Add Entry Tab --- 
         add_tab = QWidget()
         add_layout = QVBoxLayout(add_tab)
         add_layout.setSpacing(15)
@@ -603,6 +621,7 @@ class PasswordManagerGUI(QMainWindow):
         add_layout.addStretch(1)
         self.tabs.addTab(add_tab, QIcon(ICON_TAB_ADD), "Add Entry")
 
+        # --- View Entries Tab --- 
         view_tab = QWidget()
         view_layout = QVBoxLayout(view_tab)
         view_layout.setSpacing(15)
@@ -670,6 +689,7 @@ class PasswordManagerGUI(QMainWindow):
 
         self.tabs.addTab(view_tab, QIcon(ICON_TAB_VIEW), "View Entries")
 
+        # --- Authenticator Tab --- 
         auth_tab = QWidget()
         auth_tab_layout = QHBoxLayout(auth_tab)
         auth_tab_layout.setSpacing(15)
@@ -961,11 +981,11 @@ class PasswordManagerGUI(QMainWindow):
             return
         try:
             pyperclip.copy(text)
-            self.statusBar().showMessage("Copied to clipboard!", 1500) 
+            self.status_bar.showMessage("Copied to clipboard!", 1500) 
         except Exception as e:
             print(f"Clipboard error: {e}")
             QMessageBox.warning(self, "Clipboard Error", f"Could not copy to clipboard: {e}")
-            self.statusBar().showMessage("Clipboard error.", 1500)
+            self.status_bar.showMessage("Clipboard error.", 1500)
 
     def load_settings(self):
         settings = QSettings(ORG_NAME, APP_NAME)
@@ -1022,6 +1042,143 @@ class PasswordManagerGUI(QMainWindow):
              # If selection lost or invalid, clear details
              self.clear_totp_details()
     
+    def show_main_menu(self):
+        menu = QMenu(self)
+        # Apply stylesheet to menu for consistency (optional)
+        # menu.setStyleSheet(self.styleSheet()) # Inherit main style
+
+        about_action = QAction(QIcon(ICON_ABOUT), "About Passvyn", self)
+        about_action.triggered.connect(self.show_about_dialog)
+        menu.addAction(about_action)
+
+        menu.addSeparator()
+
+        backup_action = QAction(QIcon(ICON_BACKUP), "Backup Data...", self)
+        backup_action.triggered.connect(self.backup_data)
+        menu.addAction(backup_action)
+
+        restore_action = QAction(QIcon(ICON_RESTORE), "Restore Data...", self)
+        restore_action.triggered.connect(self.restore_data)
+        menu.addAction(restore_action)
+
+        menu.addSeparator()
+
+        settings_action = QAction(QIcon(ICON_SETTINGS), "Settings", self)
+        settings_action.triggered.connect(self.show_settings)
+        menu.addAction(settings_action)
+
+        # Position menu below button (adjust slightly for corner widget)
+        button_global_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
+        menu.exec(button_global_pos)
+
+    # --- Menu Action Handlers --- 
+    def show_about_dialog(self):
+        # Simple About Box
+        QMessageBox.about(self, 
+            "About Passvyn",
+            "<b>Passvyn: Password Manager</b><br><br>" 
+            "Version: 1.0 (Conceptual)<br>" 
+            "A secure place for your passwords and codes.<br><br>" 
+            "Developed by Vaibhav Pratap Singh"
+        )
+
+    def backup_data(self):
+        data_file = self.password_manager.data_file
+        if not os.path.exists(data_file):
+            QMessageBox.warning(self, "Backup Error", "No data file found to backup.")
+            return
+
+        # Suggest a filename for the backup
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        suggested_filename = f"passvyn_backup_{timestamp}.enc"
+
+        # Open file dialog to choose save location
+        fileName, _ = QFileDialog.getSaveFileName(self, 
+            "Backup Data File", 
+            suggested_filename, 
+            "Encrypted Data Files (*.enc);;All Files (*)")
+
+        if fileName:
+            try:
+                shutil.copy2(data_file, fileName) # copy2 preserves metadata
+                self.status_bar.showMessage(f"Backup successful: {fileName}", 5000)
+                QMessageBox.information(self, "Backup Successful", f"Data successfully backed up to:<br>{fileName}")
+            except Exception as e:
+                QMessageBox.critical(self, "Backup Failed", f"Could not backup data file: {e}")
+                self.status_bar.showMessage("Backup failed.", 3000)
+
+    def restore_data(self):
+        reply = QMessageBox.warning(self, "Confirm Restore",
+            "Restoring data will <b>overwrite your current passwords and accounts</b>.<br><br>" 
+            "Ensure the backup file was created with the <b>same master password</b> you are currently using.<br><br>" 
+            "Are you sure you want to proceed?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel)
+
+        if reply != QMessageBox.StandardButton.Yes:
+            self.status_bar.showMessage("Restore cancelled.", 3000)
+            return
+
+        # Prompt for current master password to confirm identity
+        confirm_dialog = MasterPasswordDialog(self)
+        confirm_dialog.label.setText("Enter your CURRENT master password to confirm restore:")
+        if confirm_dialog.exec() != QDialog.DialogCode.Accepted:
+            self.status_bar.showMessage("Restore cancelled.", 3000)
+            return
+        
+        current_password = confirm_dialog.getPassword()
+        # Verify password without trying to decrypt (just check hash)
+        current_hash = hashlib.sha256(current_password.encode()).hexdigest()
+        if not self.password_manager.master_password_hash or current_hash != self.password_manager.master_password_hash:
+             QMessageBox.critical(self, "Restore Failed", "Incorrect master password entered. Restore cancelled.")
+             self.status_bar.showMessage("Restore failed: Incorrect password.", 3000)
+             return
+
+        # Proceed to select backup file
+        fileName, _ = QFileDialog.getOpenFileName(self, 
+            "Restore Data File", 
+            "", 
+            "Encrypted Data Files (*.enc);;All Files (*)")
+
+        if fileName:
+            data_file = self.password_manager.data_file
+            try:
+                # Perform the copy
+                shutil.copy2(fileName, data_file)
+                
+                # Attempt to reload data with current key derived from confirmed password
+                # We already derived the key when checking the hash if needed
+                if not self.password_manager.encryption_key:
+                     self.password_manager.encryption_key = self.password_manager.derive_key(current_password)
+                     
+                if self.password_manager.decrypt_data():
+                     # Decryption successful, reload UI
+                     self.refresh_password_list()
+                     self.refresh_totp_list()
+                     # Clear details panels
+                     self.clear_entry_details()
+                     self.clear_totp_details()
+                     self.status_bar.showMessage("Restore successful! Data reloaded.", 5000)
+                     QMessageBox.information(self, "Restore Successful", "Data successfully restored and reloaded.")
+                else:
+                     # Decryption failed - the backup might be corrupt or from a different master password
+                     # We might want to restore the original file if possible, or warn user intensely.
+                     # For now, just warn.
+                     QMessageBox.critical(self, "Restore Warning", "Data file was replaced, but failed to decrypt with the current master password. The backup might be corrupt or require a different master password.")
+                     self.status_bar.showMessage("Restore completed, but decryption failed.", 5000)
+                     # Clear lists as data is unusable
+                     self.password_manager.passwords = []
+                     self.password_manager.totp_accounts = []
+                     self.refresh_password_list()
+                     self.refresh_totp_list()
+
+            except Exception as e:
+                QMessageBox.critical(self, "Restore Failed", f"Could not restore data file: {e}")
+                self.status_bar.showMessage("Restore failed.", 3000)
+
+    def show_settings(self):
+        # Placeholder for settings functionality
+        QMessageBox.information(self, "Settings", "Settings are not yet implemented.")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
