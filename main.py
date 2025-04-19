@@ -397,6 +397,47 @@ class SecuredPasswordManager:
                 return "Error"
         return None
 
+# --- Custom Master Password Dialog ---
+class MasterPasswordDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Master Password Required")
+        self.setWindowIcon(QIcon(ICON_LOCK)) # Use the lock icon
+        self.setMinimumWidth(350)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+
+        self.label = QLabel("Enter your master password:")
+        layout.addWidget(self.label)
+
+        self.password_input = QLineEdit()
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.password_input)
+
+        # Standard buttons with custom icons
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        ok_button = button_box.button(QDialogButtonBox.StandardButton.Ok)
+        cancel_button = button_box.button(QDialogButtonBox.StandardButton.Cancel)
+        
+        if ok_button: # Check if button exists
+             ok_button.setIcon(QIcon(ICON_OK))
+             ok_button.setText(" Unlock") # Add space for icon
+        if cancel_button:
+             cancel_button.setIcon(QIcon(ICON_CANCEL))
+             cancel_button.setText(" Cancel")
+             
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+        
+        # Focus the input field initially
+        self.password_input.setFocus()
+
+    def getPassword(self):
+        # Return entered text if dialog was accepted
+        return self.password_input.text()
+
 # --- Add TOTP Account Dialog ---
 class AddTotpAccountDialog(QDialog):
     def __init__(self, parent=None):
@@ -946,15 +987,25 @@ class PasswordManagerGUI(QMainWindow):
 
     def run(self):
         self.statusBar().showMessage("Ready")
-        master_password, ok = QInputDialog.getText(self, "Master Password", "Enter your master password:", QLineEdit.EchoMode.Password)
-        if ok and master_password:
-            if self.password_manager.verify_master_password(master_password):
-                 self.refresh_password_list()
-                 self.refresh_totp_list()
-                 self.show()
-            else:
-                 sys.exit()
+        
+        # Use custom dialog instead of QInputDialog
+        dialog = MasterPasswordDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+             master_password = dialog.getPassword()
+             if master_password: # Check if something was entered
+                  if self.password_manager.verify_master_password(master_password):
+                       self.refresh_password_list()
+                       self.refresh_totp_list()
+                       self.show()
+                  else:
+                       # Error message shown by verify_master_password
+                       sys.exit()
+             else:
+                  # Handle empty password entry after clicking OK
+                  QMessageBox.warning(self, "Input Error", "Master password cannot be empty.")
+                  sys.exit()
         else:
+             # Dialog was cancelled
              QMessageBox.warning(self, "Cancelled", "Master password entry cancelled.")
              sys.exit()
 
